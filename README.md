@@ -23,6 +23,7 @@ finpilot/
 ├── frontend/         # Frontend web application (React, TypeScript)
 ├── docs/             # Project documentation and architectural records
 ├── scripts/          # Utility, deployment, and automation scripts
+├── .github/          # GitHub Actions CI workflows
 ├── .editorconfig     # Editor code formatting configurations
 ├── .gitignore        # Git ignore specifications
 ├── CONTRIBUTING.md   # Contribution guidelines and development standards
@@ -35,8 +36,107 @@ finpilot/
 
 The project follows a structured 21-phase implementation plan outlined in [plan.md](plan.md).
 
-- **Current Status:** Phase 0 — Project Planning & Repository Setup (Completed)
-- **Next Phase:** Phase 1 — Project Foundation
+- **Current Status:** Phase 1 — Project Foundation (Completed)
+- **Next Phase:** Phase 2 — LangGraph & Agent Infrastructure
+
+---
+
+## Local Development Setup
+
+### Prerequisites
+
+- **Python:** 3.11 or higher
+- **Node.js:** 18.x or higher
+- **npm:** 9.x or higher
+
+---
+
+### Backend Setup (FastAPI)
+
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   # Windows (PowerShell)
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+
+   # Linux/macOS
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+3. Install dependencies in editable mode:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+4. Configure environment variables:
+   ```bash
+   # Copy example template
+   cp .env.example .env
+   ```
+
+5. Run the development server:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+   The backend API will be available at: `http://localhost:8000`
+   Health check endpoint: `http://localhost:8000/health`
+   Interactive API docs: `http://localhost:8000/docs`
+
+6. Run backend tests:
+   ```bash
+   pytest
+   ```
+
+7. Run backend linting & formatting:
+   ```bash
+   ruff check .
+   black --check .
+   ```
+
+---
+
+### Frontend Setup (React + Vite + TypeScript)
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Configure environment variables:
+   ```bash
+   # Copy example template
+   cp .env.example .env
+   ```
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   The frontend application will be available at: `http://localhost:5173`
+
+5. Run frontend linting & formatting:
+   ```bash
+   npm run lint
+   npm run format
+   ```
+
+6. Build for production:
+   ```bash
+   npm run build
+   ```
+
+---
 
 ## License
 
