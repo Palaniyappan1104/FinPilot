@@ -3,13 +3,31 @@
 from app.core.config import Settings, get_settings
 
 
-def test_default_settings(clean_settings):
+def test_default_settings(monkeypatch, clean_settings):
     """Verify default settings values when no environment variables are set."""
-    settings = Settings()
+    for env_var in [
+        "PROJECT_NAME",
+        "VERSION",
+        "ENVIRONMENT",
+        "DEBUG",
+        "LOG_LEVEL",
+        "API_V1_PREFIX",
+        "LLM_PROVIDER",
+        "GEMINI_API_KEY",
+        "LLM_MODEL",
+        "TWELVE_DATA_API_KEY",
+        "FINNHUB_API_KEY",
+        "DATABASE_URL",
+        "CHROMA_PERSIST_DIRECTORY",
+        "CORS_ORIGINS",
+    ]:
+        monkeypatch.delenv(env_var, raising=False)
+
+    settings = Settings(_env_file=None)
     assert settings.PROJECT_NAME == "FinPilot"
     assert settings.VERSION == "0.1.0"
     assert settings.ENVIRONMENT == "development"
-    assert settings.DEBUG is True
+    assert settings.DEBUG is False
     assert settings.LOG_LEVEL == "INFO"
     assert settings.API_V1_PREFIX == "/api/v1"
     assert settings.LLM_PROVIDER == "gemini"

@@ -35,3 +35,42 @@ def test_http_exception_format(client):
     assert "error" in data
     assert data["error"]["code"] == "HTTP_ERROR"
     assert "message" in data["error"]
+
+
+def test_validation_error_sanitized(client):
+    """Test validation errors return sanitized response without input values."""
+    from fastapi import APIRouter
+    from pydantic import BaseModel, Field
+
+    from app.main import app
+
+    test_router = APIRouter()
+
+    class SecretPayload(BaseModel):
+        secret_token: str = Field(..., min_length=10)
+
+    @test_router.post("/_test_validation")
+    def dummy_endpoint(payload: SecretPayload):
+        return {"status": "ok"}
+
+    app.include_router(test_router)
+
+    # Post invalid payload with sensitive value that fails validation
+    response = client.post(
+        "/_test_validation",
+        json={"secret_token": "short"},
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    data = response.json()
+    assert "error" in data
+    assert data["error"]["code"] == "VALIDATION_ERROR"
+    assert data["error"]["message"] == "Request validation failed"
+    assert isinstance(data["error"]["details"], list)
+    assert len(data["error"]["details"]) > 0
+
+    first_err = data["error"]["details"][0]
+    assert "loc" in first_err
+    assert "msg" in first_err
+    assert "type" in first_err
+    assert "input" not in first_err

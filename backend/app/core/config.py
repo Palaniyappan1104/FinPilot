@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "FinPilot"
     VERSION: str = "0.1.0"
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # Server & API
     API_V1_PREFIX: str = "/api/v1"

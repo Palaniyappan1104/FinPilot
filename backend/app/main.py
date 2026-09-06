@@ -14,13 +14,15 @@ from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.core.middleware import RequestLoggingMiddleware
 
+# Initialize application logging in a reliable order before components depend on it
+setup_logging()
+
 logger = get_logger("app.main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for application startup and shutdown."""
-    setup_logging()
     logger.info("Starting FinPilot backend service...")
     yield
     logger.info("Shutting down FinPilot backend service...")
@@ -59,11 +61,16 @@ def create_application() -> FastAPI:
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        # Strip submitted input values from error details to avoid exposing
+        # sensitive inputs
+        sanitized = [
+            {k: v for k, v in err.items() if k != "input"} for err in exc.errors()
+        ]
         logger.warning(
-            "Validation error on %s %s: %s",
+            "Validation error on %s %s (%d field(s))",
             request.method,
             request.url.path,
-            exc.errors(),
+            len(sanitized),
         )
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -71,7 +78,7 @@ def create_application() -> FastAPI:
                 "error": {
                     "code": "VALIDATION_ERROR",
                     "message": "Request validation failed",
-                    "details": exc.errors(),
+                    "details": sanitized,
                 }
             },
         )
