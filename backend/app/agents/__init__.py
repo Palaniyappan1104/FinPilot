@@ -2,12 +2,20 @@
 
 Phase 2.3 defines the shared graph state used across workflow nodes.
 Phase 2.4 defines the BaseAgent interface, AgentResult wrapper, and Tool abstraction.
+Phase 2.5 defines the minimal LangGraph workflow wiring.
 """
 
 from app.agents.base import (
     Agent,
     AgentResult,
     BaseAgent,
+)
+from app.agents.graph import (
+    PASSTHROUGH_NODE_NAME,
+    create_graph,
+    get_graph,
+    passthrough_node,
+    run_graph,
 )
 from app.agents.state import (
     ClarifiedRequest,
@@ -30,4 +38,9 @@ __all__ = [
     "InvestorProfile",
     "ClarifiedRequest",
     "create_initial_state",
+    "PASSTHROUGH_NODE_NAME",
+    "passthrough_node",
+    "create_graph",
+    "get_graph",
+    "run_graph",
 ]
