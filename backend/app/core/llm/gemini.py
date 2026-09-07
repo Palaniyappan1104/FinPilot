@@ -83,43 +83,51 @@ class GeminiProvider(LLMProvider):
 
         def _call_gemini() -> LLMResponse:
             try:
-                response = self._client.models.generate_content(
+                response = self._client.interactions.create(
                     model=self._model,
-                    contents=prompt,
+                    input=prompt,
                 )
             except Exception as exc:
                 self._map_and_raise_exception(exc)
 
-            if (
-                response is None
-                or not hasattr(response, "text")
-                or response.text is None
-            ):
+            # Retrieve text from output_text property or fallback to text/content
+            text_output = getattr(response, "output_text", None)
+            if text_output is None and hasattr(response, "text"):
+                text_output = response.text
+
+            if response is None or not text_output:
                 raise LLMResponseError(
                     message="Gemini returned an empty or invalid response.",
                     provider=self._provider_name,
                 )
 
             metadata: Dict[str, Any] = {}
-            if hasattr(response, "candidates") and response.candidates:
-                first_cand = response.candidates[0]
-                if hasattr(first_cand, "finish_reason") and first_cand.finish_reason:
-                    metadata["finish_reason"] = str(first_cand.finish_reason)
+            # Capture interaction identifier if available
+            interaction_id = getattr(response, "id", None)
+            if interaction_id:
+                metadata["interaction_id"] = interaction_id
 
-            if hasattr(response, "usage_metadata") and response.usage_metadata:
-                usage = response.usage_metadata
-                metadata["prompt_token_count"] = getattr(
-                    usage, "prompt_token_count", None
+            # Capture usage token metrics from Interaction.usage
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                metadata["input_tokens"] = getattr(usage, "total_input_tokens", None)
+                metadata["output_tokens"] = getattr(usage, "total_output_tokens", None)
+                metadata["total_tokens"] = getattr(usage, "total_tokens", None)
+            elif hasattr(response, "usage_metadata") and response.usage_metadata:
+                # Backward-compatibility fallback if legacy usage_metadata is present
+                legacy_usage = response.usage_metadata
+                metadata["input_tokens"] = getattr(
+                    legacy_usage, "prompt_token_count", None
                 )
-                metadata["candidates_token_count"] = getattr(
-                    usage, "candidates_token_count", None
+                metadata["output_tokens"] = getattr(
+                    legacy_usage, "candidates_token_count", None
                 )
-                metadata["total_token_count"] = getattr(
-                    usage, "total_token_count", None
+                metadata["total_tokens"] = getattr(
+                    legacy_usage, "total_token_count", None
                 )
 
             return LLMResponse(
-                content=response.text,
+                content=text_output,
                 model=self._model,
                 provider=self._provider_name,
                 metadata=metadata,

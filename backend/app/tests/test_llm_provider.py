@@ -31,26 +31,24 @@ def make_test_settings(**kwargs) -> Settings:
     return Settings(**defaults)
 
 
-# Helper to create a fake Gemini response object
+# Helper to create a fake Gemini Interaction response object
 def make_fake_gemini_response(
     text: str = "Analysis completed.",
-    finish_reason: str = "STOP",
-    prompt_tokens: int = 15,
-    candidate_tokens: int = 25,
+    interaction_id: str = "interaction-12345",
+    input_tokens: int = 15,
+    output_tokens: int = 25,
     total_tokens: int = 40,
 ):
-    fake_candidate = MagicMock()
-    fake_candidate.finish_reason = finish_reason
-
     fake_usage = MagicMock()
-    fake_usage.prompt_token_count = prompt_tokens
-    fake_usage.candidates_token_count = candidate_tokens
-    fake_usage.total_token_count = total_tokens
+    fake_usage.total_input_tokens = input_tokens
+    fake_usage.total_output_tokens = output_tokens
+    fake_usage.total_tokens = total_tokens
 
     fake_response = MagicMock()
+    fake_response.output_text = text
     fake_response.text = text
-    fake_response.candidates = [fake_candidate]
-    fake_response.usage_metadata = fake_usage
+    fake_response.id = interaction_id
+    fake_response.usage = fake_usage
     return fake_response
 
 
@@ -71,18 +69,18 @@ def test_gemini_provider_satisfies_llm_provider_contract():
 
 
 # ==============================================================================
-# 2. Mocked Successful Gemini Response
+# 2. Mocked Successful Gemini Response (Interactions API)
 # ==============================================================================
 
 
 def test_gemini_generate_success():
-    """Verify a mocked successful Gemini response converts into LLMResponse."""
+    """Verify a mocked successful Gemini interaction converts into LLMResponse."""
     fake_client = MagicMock()
-    fake_client.models.generate_content.return_value = make_fake_gemini_response(
+    fake_client.interactions.create.return_value = make_fake_gemini_response(
         text="Bullish sentiment observed.",
-        finish_reason="STOP",
-        prompt_tokens=10,
-        candidate_tokens=20,
+        interaction_id="interact-abc",
+        input_tokens=10,
+        output_tokens=20,
         total_tokens=30,
     )
 
@@ -95,12 +93,14 @@ def test_gemini_generate_success():
     assert response.content == "Bullish sentiment observed."
     assert response.model == "gemini-2.5-flash"
     assert response.provider == "gemini"
-    assert response.metadata["finish_reason"] == "STOP"
-    assert response.metadata["total_token_count"] == 30
+    assert response.metadata["interaction_id"] == "interact-abc"
+    assert response.metadata["input_tokens"] == 10
+    assert response.metadata["output_tokens"] == 20
+    assert response.metadata["total_tokens"] == 30
 
-    fake_client.models.generate_content.assert_called_once_with(
+    fake_client.interactions.create.assert_called_once_with(
         model="gemini-2.5-flash",
-        contents="Analyze AAPL earnings",
+        input="Analyze AAPL earnings",
     )
 
 
@@ -172,7 +172,7 @@ def test_gemini_transient_failure_retries_and_succeeds():
     success_resp = make_fake_gemini_response(text="Recovered successfully")
 
     # Fail on first 2 calls, succeed on the 3rd
-    fake_client.models.generate_content.side_effect = [
+    fake_client.interactions.create.side_effect = [
         TransientRateLimitError("Resource exhausted"),
         TransientRateLimitError("Resource exhausted"),
         success_resp,
@@ -184,7 +184,7 @@ def test_gemini_transient_failure_retries_and_succeeds():
     response = provider.generate("Give me market outlook")
 
     assert response.content == "Recovered successfully"
-    assert fake_client.models.generate_content.call_count == 3
+    assert fake_client.interactions.create.call_count == 3
 
 
 # ==============================================================================
@@ -199,7 +199,7 @@ def test_gemini_retry_exhaustion_raises_application_error():
     class PersistentUnavailableError(Exception):
         status_code = 503
 
-    fake_client.models.generate_content.side_effect = PersistentUnavailableError(
+    fake_client.interactions.create.side_effect = PersistentUnavailableError(
         "Service unavailable"
     )
 
@@ -211,7 +211,7 @@ def test_gemini_retry_exhaustion_raises_application_error():
 
     assert exc_info.value.attempts == 3
     assert exc_info.value.provider == "gemini"
-    assert fake_client.models.generate_content.call_count == 3
+    assert fake_client.interactions.create.call_count == 3
 
 
 # ==============================================================================
@@ -226,7 +226,7 @@ def test_gemini_authentication_error_fails_immediately_without_retries():
     class AuthError(Exception):
         status_code = 401
 
-    fake_client.models.generate_content.side_effect = AuthError("API_KEY_INVALID")
+    fake_client.interactions.create.side_effect = AuthError("API_KEY_INVALID")
 
     settings = make_test_settings(LLM_MAX_RETRIES=3, LLM_INITIAL_RETRY_DELAY=0.01)
     provider = GeminiProvider(settings=settings, client=fake_client)
@@ -235,7 +235,7 @@ def test_gemini_authentication_error_fails_immediately_without_retries():
         provider.generate("Analyze portfolio risk")
 
     # MUST be called only once — no retries on authentication error
-    assert fake_client.models.generate_content.call_count == 1
+    assert fake_client.interactions.create.call_count == 1
     assert "authentication failed" in str(exc_info.value).lower()
 
 
@@ -252,7 +252,7 @@ def test_no_secret_key_leaked_in_errors():
     class CustomApiError(Exception):
         status_code = 403
 
-    fake_client.models.generate_content.side_effect = CustomApiError("Access forbidden")
+    fake_client.interactions.create.side_effect = CustomApiError("Access forbidden")
 
     settings = make_test_settings(GEMINI_API_KEY=secret_key, LLM_MAX_RETRIES=1)
     provider = GeminiProvider(settings=settings, client=fake_client)
