@@ -31,6 +31,10 @@ def test_default_settings(monkeypatch, clean_settings):
     assert settings.LOG_LEVEL == "INFO"
     assert settings.API_V1_PREFIX == "/api/v1"
     assert settings.LLM_PROVIDER == "gemini"
+    assert settings.LLM_MODEL == "gemini-2.5-flash"
+    assert settings.LLM_MAX_RETRIES == 3
+    assert settings.LLM_INITIAL_RETRY_DELAY == 0.5
+    assert settings.LLM_BACKOFF_FACTOR == 2.0
     assert settings.DATABASE_URL.startswith("postgresql")
     assert settings.CHROMA_PERSIST_DIRECTORY == "./chroma_data"
 

@@ -27,7 +27,10 @@ class Settings(BaseSettings):
     # LLM Settings (Phase 2+)
     LLM_PROVIDER: str = "gemini"
     GEMINI_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-1.5-flash"
+    LLM_MODEL: str = "gemini-2.5-flash"
+    LLM_MAX_RETRIES: int = 3
+    LLM_INITIAL_RETRY_DELAY: float = 0.5
+    LLM_BACKOFF_FACTOR: float = 2.0
 
     # Financial Data Providers (Phase 6+)
     TWELVE_DATA_API_KEY: str = ""
