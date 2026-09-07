@@ -57,6 +57,11 @@ class GeminiProvider(LLMProvider):
                 ) from exc
 
     @property
+    def provider_name(self) -> str:
+        """Return the provider identifier name."""
+        return self._provider_name
+
+    @property
     def model_name(self) -> str:
         """Return the active model name."""
         return self._model
@@ -81,12 +86,35 @@ class GeminiProvider(LLMProvider):
                 provider=self._provider_name,
             )
 
+        create_kwargs: Dict[str, Any] = {
+            "model": self._model,
+            "input": prompt,
+        }
+
+        # If a structured schema is provided, configure the response_format
+        if schema is not None:
+            json_schema: Dict[str, Any]
+            if hasattr(schema, "model_json_schema") and callable(
+                schema.model_json_schema
+            ):
+                json_schema = schema.model_json_schema()
+            elif isinstance(schema, dict):
+                json_schema = schema
+            else:
+                raise LLMResponseError(
+                    message=f"Unsupported schema type: {type(schema).__name__}",
+                    provider=self._provider_name,
+                )
+
+            create_kwargs["response_format"] = {
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": json_schema,
+            }
+
         def _call_gemini() -> LLMResponse:
             try:
-                response = self._client.interactions.create(
-                    model=self._model,
-                    input=prompt,
-                )
+                response = self._client.interactions.create(**create_kwargs)
             except Exception as exc:
                 self._map_and_raise_exception(exc)
 

@@ -21,6 +21,11 @@ class LLMResponse(BaseModel):
 class LLMProvider(ABC):
     """Abstract interface defining the common contract for LLM providers."""
 
+    @property
+    def provider_name(self) -> str:
+        """Return the provider identifier name (e.g. 'gemini')."""
+        return "unknown"
+
     @abstractmethod
     def generate(
         self,

@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import BaseModel, Field
 
 from app.core.config import Settings
 from app.core.llm.base import LLMProvider, LLMResponse
@@ -12,9 +13,11 @@ from app.core.llm.exceptions import (
     LLMError,
     LLMResponseError,
     LLMRetryExhaustedError,
+    LLMStructuredOutputError,
 )
 from app.core.llm.factory import get_llm_provider
 from app.core.llm.gemini import GeminiProvider
+from app.core.llm.structured import generate_structured
 
 
 # Helper to build test Settings without real external resources
@@ -262,3 +265,176 @@ def test_no_secret_key_leaked_in_errors():
 
     error_str = str(exc_info.value)
     assert secret_key not in error_str
+
+
+# ==============================================================================
+# 9. Structured Output Tests (Phase 2.2)
+# ==============================================================================
+
+
+class DummyAnalysisResult(BaseModel):
+    ticker: str
+    sentiment: str
+    confidence_score: float = Field(..., ge=0.0, le=1.0)
+
+
+def test_structured_output_success():
+    """Verify valid JSON response parses into the expected Pydantic model."""
+    fake_client = MagicMock()
+    valid_json = '{"ticker": "AAPL", "sentiment": "bullish", "confidence_score": 0.88}'
+    fake_client.interactions.create.return_value = make_fake_gemini_response(
+        text=valid_json
+    )
+
+    settings = make_test_settings()
+    provider = GeminiProvider(settings=settings, client=fake_client)
+
+    result = generate_structured(
+        provider=provider,
+        prompt="Analyze AAPL",
+        schema=DummyAnalysisResult,
+    )
+
+    assert isinstance(result, DummyAnalysisResult)
+    assert result.ticker == "AAPL"
+    assert result.sentiment == "bullish"
+    assert result.confidence_score == 0.88
+
+    # Verify schema was passed into interactions.create
+    call_kwargs = fake_client.interactions.create.call_args.kwargs
+    assert "response_format" in call_kwargs
+    rf = call_kwargs["response_format"]
+    assert rf["mime_type"] == "application/json"
+    assert "properties" in rf["schema"]
+    assert "ticker" in rf["schema"]["properties"]
+
+
+def test_structured_output_markdown_wrapped_json_succeeds():
+    """Verify markdown code block wrapped JSON is parsed successfully."""
+    fake_client = MagicMock()
+    wrapped_json = (
+        '```json\n{"ticker": "NVDA", "sentiment": "bullish", '
+        '"confidence_score": 0.95}\n```'
+    )
+    fake_client.interactions.create.return_value = make_fake_gemini_response(
+        text=wrapped_json
+    )
+
+    settings = make_test_settings()
+    provider = GeminiProvider(settings=settings, client=fake_client)
+
+    result = generate_structured(
+        provider=provider,
+        prompt="Analyze NVDA",
+        schema=DummyAnalysisResult,
+    )
+
+    assert result.ticker == "NVDA"
+    assert result.confidence_score == 0.95
+
+
+def test_structured_output_malformed_first_attempt_retries_once_and_succeeds():
+    """Verify malformed JSON on attempt 1 retries once and succeeds on attempt 2."""
+    fake_client = MagicMock()
+    bad_json = "This is not valid json {"
+    good_json = '{"ticker": "MSFT", "sentiment": "neutral", "confidence_score": 0.50}'
+
+    fake_client.interactions.create.side_effect = [
+        make_fake_gemini_response(text=bad_json),
+        make_fake_gemini_response(text=good_json),
+    ]
+
+    settings = make_test_settings()
+    provider = GeminiProvider(settings=settings, client=fake_client)
+
+    result = generate_structured(
+        provider=provider,
+        prompt="Analyze MSFT",
+        schema=DummyAnalysisResult,
+    )
+
+    assert result.ticker == "MSFT"
+    assert result.sentiment == "neutral"
+    # Call count MUST be exactly 2 (1 initial + 1 retry)
+    assert fake_client.interactions.create.call_count == 2
+
+
+def test_structured_output_malformed_both_attempts_raises_structured_output_error():
+    """Verify persistent invalid output after attempt 2 raises error."""
+    fake_client = MagicMock()
+    # Invalid confidence_score fails le=1.0 constraint
+    invalid_schema_json = (
+        '{"ticker": "GOOG", "sentiment": "bullish", "confidence_score": 999.0}'
+    )
+
+    fake_client.interactions.create.side_effect = [
+        make_fake_gemini_response(text=invalid_schema_json),
+        make_fake_gemini_response(text=invalid_schema_json),
+    ]
+
+    settings = make_test_settings()
+    provider = GeminiProvider(settings=settings, client=fake_client)
+
+    with pytest.raises(LLMStructuredOutputError) as exc_info:
+        generate_structured(
+            provider=provider,
+            prompt="Analyze GOOG",
+            schema=DummyAnalysisResult,
+        )
+
+    # Call count MUST be exactly 2 (initial + 1 retry, no unlimited loop)
+    assert fake_client.interactions.create.call_count == 2
+    assert "after exactly 2 attempts" in str(exc_info.value)
+    assert "DummyAnalysisResult" in str(exc_info.value)
+    assert exc_info.value.provider == "gemini"
+    assert exc_info.value.schema_name == "DummyAnalysisResult"
+    assert exc_info.value.attempts == 2
+    assert not hasattr(exc_info.value, "raw_output") or (
+        exc_info.value.raw_output is None
+    )
+
+
+def test_structured_output_auth_error_not_retried():
+    """Verify authentication errors do not trigger structured output retries."""
+    fake_client = MagicMock()
+
+    class AuthError(Exception):
+        status_code = 401
+
+    fake_client.interactions.create.side_effect = AuthError("API_KEY_INVALID")
+
+    settings = make_test_settings()
+    provider = GeminiProvider(settings=settings, client=fake_client)
+
+    with pytest.raises(LLMAuthenticationError):
+        generate_structured(
+            provider=provider,
+            prompt="Analyze TSLA",
+            schema=DummyAnalysisResult,
+        )
+
+    # Must be called only once
+    assert fake_client.interactions.create.call_count == 1
+
+
+def test_structured_output_error_does_not_leak_secret():
+    """Verify secrets/API keys do not appear in LLMStructuredOutputError messages."""
+    fake_client = MagicMock()
+    secret_key = "AIzaSySecretRealKey999"
+
+    fake_client.interactions.create.side_effect = [
+        make_fake_gemini_response(text="broken json 1"),
+        make_fake_gemini_response(text="broken json 2"),
+    ]
+
+    settings = make_test_settings(GEMINI_API_KEY=secret_key)
+    provider = GeminiProvider(settings=settings, client=fake_client)
+
+    with pytest.raises(LLMStructuredOutputError) as exc_info:
+        generate_structured(
+            provider=provider,
+            prompt="Analyze META",
+            schema=DummyAnalysisResult,
+        )
+
+    assert secret_key not in str(exc_info.value)
