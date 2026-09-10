@@ -3,12 +3,19 @@
 Phase 2.3 defines the shared graph state used across workflow nodes.
 Phase 2.4 defines the BaseAgent interface, AgentResult wrapper, and Tool abstraction.
 Phase 2.5 defines the minimal LangGraph workflow wiring.
+Phase 3.1 defines the input/output schemas for the Conversation Agent.
 """
 
 from app.agents.base import (
     Agent,
     AgentResult,
     BaseAgent,
+)
+from app.agents.conversation_schema import (
+    ChatMessage,
+    ConversationInput,
+    ConversationMessage,
+    ConversationOutput,
 )
 from app.agents.graph import (
     PASSTHROUGH_NODE_NAME,
@@ -43,4 +50,8 @@ __all__ = [
     "create_graph",
     "get_graph",
     "run_graph",
+    "ChatMessage",
+    "ConversationMessage",
+    "ConversationInput",
+    "ConversationOutput",
 ]
