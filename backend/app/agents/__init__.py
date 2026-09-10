@@ -11,6 +11,7 @@ from app.agents.base import (
     AgentResult,
     BaseAgent,
 )
+from app.agents.conversation import ConversationAgent
 from app.agents.conversation_schema import (
     ChatMessage,
     ConversationInput,
@@ -50,6 +51,7 @@ __all__ = [
     "create_graph",
     "get_graph",
     "run_graph",
+    "ConversationAgent",
     "ChatMessage",
     "ConversationMessage",
     "ConversationInput",
