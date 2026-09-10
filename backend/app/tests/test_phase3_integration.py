@@ -774,3 +774,198 @@ def test_graph_state_isolation_on_pipeline_failure():
     # State remains pristine
     assert state["clarified_request"] is None
     assert state["user_query"] == "Analyze TCS"
+
+
+# ===========================================================================
+# J. Phase 3.5 Review: 10+ Diverse Sample Query Normalization Benchmark
+# ===========================================================================
+
+SAMPLE_QUERIES_BENCHMARK = [
+    (
+        "1. Investment with Rupee and Comma Formatting",
+        "Should I invest ₹1,00,000 in Infosys for 5 years with moderate risk?",
+        {
+            "normalized_query": (
+                "Should I invest 100000 in Infosys for 5 years with moderate risk?"
+            ),
+            "intent_type": "investment_analysis",
+            "company": "Infosys",
+            "capital_amount": 100000.0,
+            "time_horizon": "5 years",
+            "risk_tolerance": "moderate",
+        },
+    ),
+    (
+        "2. Colloquial K Format and Qualitative Risk",
+        "Can I put 50k into Tata Motors with moderate risk for 2 years?",
+        {
+            "normalized_query": (
+                "Can I invest 50000 in Tata Motors with moderate risk for 2 years?"
+            ),
+            "intent_type": "investment_analysis",
+            "company": "Tata Motors",
+            "capital_amount": 50000.0,
+            "time_horizon": "2 years",
+            "risk_tolerance": "moderate",
+        },
+    ),
+    (
+        "3. Lakh Units and Long-Term Horizon",
+        "I want to allocate 10 lakhs in TCS for long-term growth",
+        {
+            "normalized_query": (
+                "I want to allocate 1000000 in TCS for long-term growth"
+            ),
+            "intent_type": "investment_analysis",
+            "company": "TCS",
+            "capital_amount": 1000000.0,
+            "time_horizon": "long-term",
+            "risk_tolerance": None,
+        },
+    ),
+    (
+        "4. Ticker-based Investment Query",
+        "Is HDFCBANK good for a 3-year investment of 250000?",
+        {
+            "normalized_query": ("Is HDFCBANK good for a 3-year investment of 250000?"),
+            "intent_type": "investment_analysis",
+            "company": "HDFCBANK",
+            "capital_amount": 250000.0,
+            "time_horizon": "3 years",
+            "risk_tolerance": None,
+        },
+    ),
+    (
+        "5. Missing Horizon and Risk",
+        "Should I invest ₹75000 in Reliance Industries?",
+        {
+            "normalized_query": ("Should I invest 75000 in Reliance Industries?"),
+            "intent_type": "investment_analysis",
+            "company": "Reliance Industries",
+            "capital_amount": 75000.0,
+            "time_horizon": None,
+            "risk_tolerance": None,
+        },
+    ),
+    (
+        "6. Missing Capital Amount",
+        "I plan to invest in Bharti Airtel for 5 years with high risk",
+        {
+            "normalized_query": (
+                "I plan to invest in Bharti Airtel for 5 years with high risk"
+            ),
+            "intent_type": "investment_analysis",
+            "company": "Bharti Airtel",
+            "capital_amount": None,
+            "time_horizon": "5 years",
+            "risk_tolerance": "high",
+        },
+    ),
+    (
+        "7. Missing Company Entity",
+        "Should I invest 50000 for 3 years with conservative risk?",
+        {
+            "normalized_query": (
+                "Should I invest 50000 for 3 years with conservative risk?"
+            ),
+            "intent_type": "investment_analysis",
+            "company": None,
+            "capital_amount": 50000.0,
+            "time_horizon": "3 years",
+            "risk_tolerance": "conservative",
+        },
+    ),
+    (
+        "8. Factual Company Metrics Query",
+        "What is the P/E ratio and dividend yield of TCS?",
+        {
+            "normalized_query": ("What is the P/E ratio and dividend yield of TCS?"),
+            "intent_type": "stock_research",
+            "company": "TCS",
+            "capital_amount": None,
+            "time_horizon": None,
+            "risk_tolerance": None,
+        },
+    ),
+    (
+        "9. Educational Concept Query",
+        "What is the difference between a mutual fund and an ETF?",
+        {
+            "normalized_query": (
+                "What is the difference between a mutual fund and an ETF?"
+            ),
+            "intent_type": "general_inquiry",
+            "company": None,
+            "capital_amount": None,
+            "time_horizon": None,
+            "risk_tolerance": None,
+        },
+    ),
+    (
+        "10. Out-of-Scope Non-Financial Query",
+        "Can you write a poem about the sunrise?",
+        {
+            "normalized_query": "Can you write a poem about the sunrise?",
+            "intent_type": "out_of_scope",
+            "company": None,
+            "capital_amount": None,
+            "time_horizon": None,
+            "risk_tolerance": None,
+        },
+    ),
+    (
+        "11. Ambiguous Reference without Fabrication",
+        "Should I invest in that popular electric car company?",
+        {
+            "normalized_query": (
+                "Should I invest in that popular electric car company?"
+            ),
+            "intent_type": "investment_analysis",
+            "company": None,
+            "capital_amount": None,
+            "time_horizon": None,
+            "risk_tolerance": None,
+        },
+    ),
+    (
+        "12. Conversational Greeting",
+        "Hello, good morning! How can you assist me today?",
+        {
+            "normalized_query": ("Hello, good morning! How can you assist me today?"),
+            "intent_type": "general_inquiry",
+            "company": None,
+            "capital_amount": None,
+            "time_horizon": None,
+            "risk_tolerance": None,
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "label,user_query,expected_data",
+    SAMPLE_QUERIES_BENCHMARK,
+)
+def test_phase3_5_query_normalization_benchmark(
+    label: str,
+    user_query: str,
+    expected_data: dict,
+):
+    """Verify ConversationAgent normalizes varied queries accurately (Roadmap 3.5.1)."""
+    mock_json = json.dumps(expected_data)
+    provider = MockLLMProvider(responses=[mock_json])
+    agent = ConversationAgent(provider=provider)
+
+    result = agent.run(user_query)
+
+    assert result.success is True
+    assert result.confidence is None
+    assert isinstance(result.data, ConversationOutput)
+
+    output: ConversationOutput = result.data
+    assert output.normalized_query == expected_data["normalized_query"]
+    assert output.intent_type == expected_data["intent_type"]
+    assert output.company == expected_data["company"]
+    assert output.capital_amount == expected_data["capital_amount"]
+    assert output.time_horizon == expected_data["time_horizon"]
+    assert output.risk_tolerance == expected_data["risk_tolerance"]
