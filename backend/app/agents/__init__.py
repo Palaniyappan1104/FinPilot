@@ -13,6 +13,17 @@ from app.agents.base import (
     AgentResult,
     BaseAgent,
 )
+from app.agents.cio import (
+    CIOAgent,
+    create_fallback_routing_decision,
+)
+from app.agents.cio_schema import (
+    CORE_SPECIALISTS,
+    CIOInput,
+    CIORoutingDecision,
+    SpecialistName,
+    SpecialistTask,
+)
 from app.agents.clarification import ClarificationAgent
 from app.agents.clarification_schema import (
     ClarificationInput,
@@ -44,6 +55,7 @@ from app.agents.graph import (
     should_continue_after_conversation,
 )
 from app.agents.state import (
+    CIORoutingDecisionState,
     ClarifiedRequest,
     GraphState,
     InvestorProfile,
@@ -63,6 +75,7 @@ __all__ = [
     "GraphState",
     "InvestorProfile",
     "ClarifiedRequest",
+    "CIORoutingDecisionState",
     "create_initial_state",
     "PASSTHROUGH_NODE_NAME",
     "passthrough_node",
@@ -88,4 +101,11 @@ __all__ = [
     "should_continue_after_clarification",
     "create_conversation_graph",
     "run_conversation_graph",
+    "CIOAgent",
+    "CIOInput",
+    "CIORoutingDecision",
+    "SpecialistName",
+    "SpecialistTask",
+    "CORE_SPECIALISTS",
+    "create_fallback_routing_decision",
 ]

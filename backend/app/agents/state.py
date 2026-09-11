@@ -36,6 +36,17 @@ class ClarifiedRequest(TypedDict, total=False):
     clarification_questions: Optional[list[str]]
 
 
+class CIORoutingDecisionState(TypedDict, total=False):
+    """Structured state representation of the CIO routing decision (Phase 5)."""
+
+    target_company: str
+    ticker: Optional[str]
+    selected_specialists: list[str]
+    specialist_tasks: Dict[str, Any]
+    reasoning: str
+    fallback_applied: bool
+
+
 class GraphState(TypedDict, total=False):
     """Shared execution state passed between LangGraph nodes in FinPilot workflows.
 
@@ -64,6 +75,10 @@ class GraphState(TypedDict, total=False):
     # Context & Request Normalization (Phase 3 & Phase 4)
     investor_profile: Optional[InvestorProfile]
     clarified_request: Optional[ClarifiedRequest]
+    documents_available: Optional[bool]
+
+    # CIO Orchestration & Routing (Phase 5)
+    cio_decision: Optional[CIORoutingDecisionState]
 
     # Specialist Agent Outputs (Phase 6 - Phase 10)
     # Typed as Optional[Dict[str, Any]] placeholders until each specialist
@@ -82,6 +97,7 @@ class GraphState(TypedDict, total=False):
 def create_initial_state(
     user_query: str,
     investor_profile: Optional[InvestorProfile] = None,
+    documents_available: bool = False,
 ) -> GraphState:
     """Initialize a clean GraphState with a user query.
 
@@ -90,6 +106,7 @@ def create_initial_state(
     Args:
         user_query: Raw natural language user query.
         investor_profile: Optional existing investor profile context.
+        documents_available: Whether user uploaded documents are available.
 
     Returns:
         GraphState: An initial state dictionary ready for workflow execution.
@@ -104,6 +121,8 @@ def create_initial_state(
         user_query=user_query.strip(),
         investor_profile=investor_profile,
         clarified_request=None,
+        documents_available=documents_available,
+        cio_decision=None,
         technical_result=None,
         fundamental_result=None,
         news_result=None,
