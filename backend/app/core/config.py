@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     LLM_BACKOFF_FACTOR: float = 2.0
 
     # Financial Data Providers (Phase 6+)
+    FINANCIAL_DATA_PROVIDER: str = "yahoo"
     TWELVE_DATA_API_KEY: str = ""
     FINNHUB_API_KEY: str = ""
 
