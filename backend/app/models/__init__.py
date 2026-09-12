@@ -12,12 +12,30 @@ from app.models.financial_data import (
     IncomeStatementPeriod,
     ProviderRawSnapshot,
 )
+from app.models.fundamental_metrics import (
+    CashFlowMetrics,
+    FundamentalMetrics,
+    GrowthMetrics,
+    LeverageMetrics,
+    MetricSource,
+    ProfitabilityMetrics,
+    RevenueHistoryItem,
+    ValuationMetrics,
+)
 
 __all__ = [
     "BalanceSheetPeriod",
+    "CashFlowMetrics",
     "CashFlowPeriod",
     "CompanyFundamentals",
     "CompanyProfile",
+    "FundamentalMetrics",
+    "GrowthMetrics",
     "IncomeStatementPeriod",
+    "LeverageMetrics",
+    "MetricSource",
+    "ProfitabilityMetrics",
     "ProviderRawSnapshot",
+    "RevenueHistoryItem",
+    "ValuationMetrics",
 ]
