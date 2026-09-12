@@ -37,6 +37,17 @@ from app.agents.conversation_schema import (
     ConversationMessage,
     ConversationOutput,
 )
+from app.agents.fundamental import (
+    FundamentalAnalystAgent,
+    fundamental_analyst_node,
+)
+from app.agents.fundamental_schema import (
+    DimensionAssessment,
+    DimensionRating,
+    FundamentalAnalysisOutput,
+    FundamentalAnalystInput,
+    OverallAssessmentRating,
+)
 from app.agents.graph import (
     CIO_NODE_NAME,
     CLARIFICATION_NODE_NAME,
@@ -130,4 +141,11 @@ __all__ = [
     "SPECIALIST_STATE_KEY_MAP",
     "create_specialist_stub_node",
     "run_with_timeout_and_isolation",
+    "DimensionAssessment",
+    "DimensionRating",
+    "FundamentalAnalysisOutput",
+    "FundamentalAnalystAgent",
+    "FundamentalAnalystInput",
+    "OverallAssessmentRating",
+    "fundamental_analyst_node",
 ]
