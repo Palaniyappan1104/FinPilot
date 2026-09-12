@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     TWELVE_DATA_API_KEY: str = ""
     FINNHUB_API_KEY: str = ""
 
+    # Market Data Providers (Phase 7+)
+    MARKET_DATA_PROVIDER: str = "yahoo"
+
     # Database & Vector Store (Phase 9+ / Phase 14+)
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/finpilot"
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_data"

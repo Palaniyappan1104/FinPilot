@@ -22,6 +22,10 @@ from app.models.fundamental_metrics import (
     RevenueHistoryItem,
     ValuationMetrics,
 )
+from app.models.market_data import (
+    HistoricalMarketData,
+    OHLCVCandle,
+)
 
 __all__ = [
     "BalanceSheetPeriod",
@@ -31,9 +35,11 @@ __all__ = [
     "CompanyProfile",
     "FundamentalMetrics",
     "GrowthMetrics",
+    "HistoricalMarketData",
     "IncomeStatementPeriod",
     "LeverageMetrics",
     "MetricSource",
+    "OHLCVCandle",
     "ProfitabilityMetrics",
     "ProviderRawSnapshot",
     "RevenueHistoryItem",

@@ -35,3 +35,40 @@ class ProviderRateLimitError(FinancialDataError):
 
 class ProviderMalformedDataError(FinancialDataError):
     """Raised when the provider response is unexpected or corrupted."""
+
+
+# ---------------------------------------------------------------------------
+# Market Data Domain Exceptions (Phase 7.1)
+# ---------------------------------------------------------------------------
+
+
+class MarketDataError(Exception):
+    """Base exception for all market data provider errors."""
+
+    def __init__(self, message: str, provider: str = "unknown") -> None:
+        super().__init__(message)
+        self.message = message
+        self.provider = provider
+
+    def __str__(self) -> str:
+        return f"[{self.provider}] {self.message}"
+
+
+class MarketDataTickerNotFoundError(MarketDataError, TickerNotFoundError):
+    """Raised when a ticker symbol is unknown, invalid, or has no market data."""
+
+
+class MarketDataProviderUnavailableError(MarketDataError, ProviderUnavailableError):
+    """Raised when the market data provider is unreachable due to network/timeout."""
+
+
+class MarketDataProviderRateLimitError(MarketDataError, ProviderRateLimitError):
+    """Raised when the market data provider explicitly rejects requests (HTTP 429)."""
+
+
+class MarketDataMalformedError(MarketDataError, ProviderMalformedDataError):
+    """Raised when market data is corrupted or violates integrity constraints."""
+
+
+class EmptyMarketDataError(MarketDataError):
+    """Raised when provider returns an empty series or zero valid candles."""
