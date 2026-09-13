@@ -77,6 +77,15 @@ from app.services.text_extraction_exceptions import (
     ScannedDocumentError,
     UnsupportedDocumentFormatError,
 )
+from app.services.top_k_retriever import (
+    InvalidKError,
+    InvalidRelevanceThresholdError,
+    MalformedSearchResultError,
+    TopKRetrievalError,
+    TopKRetriever,
+    UnsupportedDistanceMetricError,
+    retrieve_top_k,
+)
 
 __all__ = [
     "ChunkingConfig",
@@ -98,10 +107,13 @@ __all__ = [
     "EncryptedDocumentError",
     "ExtractedDocumentValidator",
     "InvalidChunkConfigurationError",
+    "InvalidKError",
     "InvalidMetadataError",
+    "InvalidRelevanceThresholdError",
     "InvalidTickerError",
     "MalformedDocumentError",
     "MalformedExtractionResultError",
+    "MalformedSearchResultError",
     "MetadataError",
     "MissingSourceProvenanceError",
     "NewsProcessor",
@@ -110,7 +122,10 @@ __all__ = [
     "QueryEmbedder",
     "ScannedDocumentError",
     "SimilaritySearchService",
+    "TopKRetrievalError",
+    "TopKRetriever",
     "UnusableExtractedTextError",
+    "UnsupportedDistanceMetricError",
     "UnsupportedDocumentError",
     "UnsupportedDocumentFormatError",
     "attach_metadata_to_chunked_document",
@@ -125,6 +140,7 @@ __all__ = [
     "embed_chunked_document",
     "embed_query",
     "get_document_extractor",
+    "retrieve_top_k",
     "search_company_similarity",
     "search_document_similarity",
     "search_similarity",

@@ -60,6 +60,10 @@ from app.models.news_processing import (
     ProcessedNewsArticle,
     SentimentType,
 )
+from app.models.retrieval import (
+    TopKConfig,
+    TopKRetrievalResult,
+)
 from app.models.technical_metrics import (
     MACDMetrics,
     MovingAverageMetrics,
@@ -124,6 +128,8 @@ __all__ = [
     "SupportResistanceMetrics",
     "TechnicalMetrics",
     "TechnicalScoreBreakdown",
+    "TopKConfig",
+    "TopKRetrievalResult",
     "TrendDirection",
     "ValuationMetrics",
     "ValidatedDocument",
