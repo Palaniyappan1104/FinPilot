@@ -28,8 +28,9 @@ Scenarios tested:
 """
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import chromadb
 import pytest
@@ -213,12 +214,14 @@ class TestPhase97ChromaStorage:
         assert store.persist_directory is None
 
     def test_chroma_initialization_failure_raises_typed_error(self) -> None:
-        """VectorStoreInitializationError is raised when path cannot be created."""
+        """VectorStoreInitializationError is raised when persist path fails."""
         fake_settings = MagicMock()
-        # Non-creatable path on Windows / system
-        fake_settings.CHROMA_PERSIST_DIRECTORY = "Z:\\non_existent_drive\\chroma"
-        with pytest.raises(VectorStoreInitializationError):
-            ChromaVectorStore(settings=fake_settings)
+        fake_settings.CHROMA_PERSIST_DIRECTORY = "/unwritable/chroma_path"
+        with patch.object(Path, "mkdir", side_effect=OSError("Permission denied")):
+            with pytest.raises(VectorStoreInitializationError) as exc_info:
+                ChromaVectorStore(settings=fake_settings)
+        assert "Failed to access ChromaDB directory" in str(exc_info.value)
+        assert exc_info.value.path == "/unwritable/chroma_path"
 
     # ------------------------------------------------------------------
     # 2. Persistent/local storage configuration
