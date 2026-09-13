@@ -262,6 +262,20 @@ class ResearchAnalystAgent(BaseAgent):
         """Structured output schema."""
         return ResearchAnalysisOutput
 
+    def create_evidence_tracker(self, context: RetrievalContext) -> Any:
+        """Create an EvidenceTracker initialized from the given RetrievalContext
+        (Phase 9.13).
+
+        Args:
+            context: RetrievalContext from Phase 9.11.
+
+        Returns:
+            EvidenceTracker: Tracker initialized with context chunks.
+        """
+        from app.services.evidence_tracker import EvidenceTracker
+
+        return EvidenceTracker(context=context)
+
     def analyze(
         self,
         query: str,

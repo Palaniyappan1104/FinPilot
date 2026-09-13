@@ -86,7 +86,11 @@ from app.agents.news_schema import (
     OverallSentimentType,
     RecentNewsItem,
 )
-from app.agents.research import ResearchAnalystAgent
+from app.agents.research import (
+    ResearchAnalystAgent,
+    format_research_prompt,
+    validate_research_analysis,
+)
 from app.agents.research_schema import (
     InvalidProvenanceError,
     ResearchAnalysisOutput,
@@ -123,6 +127,8 @@ from app.agents.tools import (
     BaseTool,
     Tool,
 )
+from app.models.evidence import ResearchEvidence
+from app.services.evidence_tracker import EvidenceTracker, track_evidence
 
 __all__ = [
     "Agent",
@@ -204,8 +210,13 @@ __all__ = [
     "ResearchAnalystAgent",
     "ResearchAnalystInput",
     "ResearchAnalysisOutput",
+    "ResearchEvidence",
     "ResearchEvidenceRef",
     "ResearchFinding",
     "ResearchValidationError",
     "InvalidProvenanceError",
+    "EvidenceTracker",
+    "track_evidence",
+    "format_research_prompt",
+    "validate_research_analysis",
 ]

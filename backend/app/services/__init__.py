@@ -62,6 +62,7 @@ from app.services.document_vector_service import (
     store_chunk_embeddings,
     store_document_embeddings,
 )
+from app.services.evidence_tracker import EvidenceTracker, track_evidence
 from app.services.fundamental_metrics import calculate_fundamental_metrics
 from app.services.news_processor import NewsProcessor
 from app.services.query_embedder import QueryEmbedder, embed_query
@@ -118,6 +119,7 @@ __all__ = [
     "EmptyDocumentChunkingError",
     "EmptyExtractedTextError",
     "EncryptedDocumentError",
+    "EvidenceTracker",
     "ExtractedDocumentValidator",
     "InconsistentContextError",
     "InvalidChunkConfigurationError",
@@ -164,6 +166,7 @@ __all__ = [
     "search_similarity",
     "store_chunk_embeddings",
     "store_document_embeddings",
+    "track_evidence",
     "validate_document_content",
     "validate_document_file",
     "validate_extracted_document",
