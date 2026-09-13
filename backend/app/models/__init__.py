@@ -26,6 +26,16 @@ from app.models.market_data import (
     HistoricalMarketData,
     OHLCVCandle,
 )
+from app.models.technical_metrics import (
+    MACDMetrics,
+    MovingAverageMetrics,
+    RSIMetrics,
+    SupportResistanceMetrics,
+    TechnicalMetrics,
+    TechnicalScoreBreakdown,
+    TrendDirection,
+    VolumeMetrics,
+)
 
 __all__ = [
     "BalanceSheetPeriod",
@@ -38,10 +48,18 @@ __all__ = [
     "HistoricalMarketData",
     "IncomeStatementPeriod",
     "LeverageMetrics",
+    "MACDMetrics",
     "MetricSource",
+    "MovingAverageMetrics",
     "OHLCVCandle",
     "ProfitabilityMetrics",
     "ProviderRawSnapshot",
+    "RSIMetrics",
     "RevenueHistoryItem",
+    "SupportResistanceMetrics",
+    "TechnicalMetrics",
+    "TechnicalScoreBreakdown",
+    "TrendDirection",
     "ValuationMetrics",
+    "VolumeMetrics",
 ]
