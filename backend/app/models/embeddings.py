@@ -1,10 +1,13 @@
-"""Typed models for document chunk embeddings (Phase 9.6).
+"""Typed models for document chunk embeddings (Phase 9.6)
+and query embeddings (Phase 9.8).
 
 Defines:
 - EmbeddingModelInfo: Model and dimension metadata.
 - ChunkEmbeddingRequest: Input model for embedding a DocumentChunk.
 - ChunkEmbeddingResult: Output model coupling chunk provenance with its vector.
 - DocumentEmbeddingBatch: Container for a batch of ChunkEmbeddingResult objects.
+- QueryEmbeddingRequest: Input model for embedding a search/research query.
+- QueryEmbeddingResult: Output model coupling query metadata with its vector.
 """
 
 from datetime import datetime, timezone
@@ -179,4 +182,99 @@ class DocumentEmbeddingBatch(BaseModel):
                     f"{res.embedding_dimensions}, expected "
                     f"{self.embedding_dimensions}."
                 )
+        return self
+
+
+# ===========================================================================
+# QUERY EMBEDDING MODELS (Phase 9.8)
+# ===========================================================================
+
+
+class QueryEmbeddingRequest(BaseModel):
+    """Input request for embedding a user search/research query (Phase 9.8).
+
+    Carries the query string to be embedded alongside optional context
+    identifiers (query_id, ticker) without logging sensitive query content.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    query: str = Field(description="Raw user query text to embed")
+    query_id: Optional[str] = Field(
+        default=None,
+        description="Optional unique identifier for tracing this query",
+    )
+    ticker: Optional[str] = Field(
+        default=None,
+        description="Optional stock ticker context associated with the query",
+    )
+
+    @field_validator("query")
+    @classmethod
+    def query_must_be_non_empty(cls, v: str) -> str:
+        """Reject blank or whitespace-only query input."""
+        if not v or not v.strip():
+            raise ValueError(
+                "QueryEmbeddingRequest.query must be a non-empty, "
+                "non-whitespace string."
+            )
+        return v.strip()
+
+
+class QueryEmbeddingResult(BaseModel):
+    """Output model coupling a user query with its dense embedding vector (Phase 9.8).
+
+    Carries the query text, the embedding vector, model info, and UTC timestamp.
+    Dimensionality is guaranteed to match the configured document embedding space.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    query: str = Field(description="Normalized query text that was embedded")
+    query_id: Optional[str] = Field(
+        default=None,
+        description="Optional unique identifier for tracing this query",
+    )
+    ticker: Optional[str] = Field(
+        default=None,
+        description="Optional stock ticker context associated with the query",
+    )
+    embedding: List[float] = Field(
+        description="Dense numeric embedding vector for this query"
+    )
+    embedding_model: str = Field(
+        description="Model identifier used to produce this embedding"
+    )
+    embedding_dimensions: int = Field(
+        ge=1, description="Dimensionality of the embedding vector"
+    )
+    embedded_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="UTC timestamp when the embedding was generated",
+    )
+
+    @field_validator("embedding")
+    @classmethod
+    def embedding_must_be_valid(cls, v: List[float]) -> List[float]:
+        """Validate the embedding vector is non-empty and all values are finite."""
+        import math
+
+        if not v:
+            raise ValueError("Embedding vector must be non-empty.")
+        non_finite = [x for x in v if not math.isfinite(x)]
+        if non_finite:
+            raise ValueError(
+                f"Embedding vector contains {len(non_finite)} non-finite value(s) "
+                f"(NaN or infinity). All values must be finite floats."
+            )
+        return v
+
+    @model_validator(mode="after")
+    def validate_dimension_consistency(self) -> "QueryEmbeddingResult":
+        """Ensure embedding_dimensions matches the actual vector length."""
+        if self.embedding_dimensions != len(self.embedding):
+            raise ValueError(
+                f"embedding_dimensions ({self.embedding_dimensions}) must match "
+                f"actual vector length ({len(self.embedding)})."
+            )
         return self

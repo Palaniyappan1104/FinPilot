@@ -54,6 +54,7 @@ from app.services.document_vector_service import (
 )
 from app.services.fundamental_metrics import calculate_fundamental_metrics
 from app.services.news_processor import NewsProcessor
+from app.services.query_embedder import QueryEmbedder, embed_query
 from app.services.technical_metrics import calculate_technical_metrics
 from app.services.text_extraction import (
     DocumentTextExtractor,
@@ -100,6 +101,7 @@ __all__ = [
     "NewsProcessor",
     "PdfTextExtractor",
     "PlainTextExtractor",
+    "QueryEmbedder",
     "ScannedDocumentError",
     "UnusableExtractedTextError",
     "UnsupportedDocumentError",
@@ -114,6 +116,7 @@ __all__ = [
     "clean_extracted_text",
     "create_chunk_metadata",
     "embed_chunked_document",
+    "embed_query",
     "get_document_extractor",
     "store_chunk_embeddings",
     "store_document_embeddings",

@@ -197,6 +197,31 @@ class EmbeddingProvider(ABC):
             EmbeddingError: For any other provider-level failure.
         """
 
+    def embed_query(self, query: str) -> List[float]:
+        """Generate an embedding vector for a retrieval query string (Phase 9.8).
+
+        Uses the provider's retrieval-query configuration/task type
+        (e.g. RETRIEVAL_QUERY for Gemini).
+
+        Args:
+            query: Non-empty query string to embed.
+
+        Returns:
+            List[float]: Dense numeric embedding vector matching provider.dimensions.
+
+        Raises:
+            EmbeddingEmptyInputError: If query text is blank or whitespace-only.
+            EmbeddingAuthenticationError: If API key is invalid.
+            EmbeddingProviderUnavailableError: If provider is unreachable.
+            EmbeddingProviderRateLimitError: If rate-limited.
+            EmbeddingInvalidResponseError: If response is malformed.
+            EmbeddingDimensionMismatchError: If returned vector dimension != dimensions.
+            EmbeddingError: For any other provider-level failure.
+        """
+        raise NotImplementedError(
+            f"EmbeddingProvider '{self.provider_name}' does not implement embed_query."
+        )
+
 
 # ===========================================================================
 # PROVIDER FACTORY

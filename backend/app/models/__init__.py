@@ -21,6 +21,8 @@ from app.models.embeddings import (
     ChunkEmbeddingResult,
     DocumentEmbeddingBatch,
     EmbeddingModelInfo,
+    QueryEmbeddingRequest,
+    QueryEmbeddingResult,
 )
 from app.models.financial_data import (
     BalanceSheetPeriod,
@@ -110,6 +112,8 @@ __all__ = [
     "ProcessedNewsArticle",
     "ProfitabilityMetrics",
     "ProviderRawSnapshot",
+    "QueryEmbeddingRequest",
+    "QueryEmbeddingResult",
     "RSIMetrics",
     "RevenueHistoryItem",
     "SentimentType",

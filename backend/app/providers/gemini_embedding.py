@@ -41,6 +41,9 @@ logger = get_logger("app.providers.gemini_embedding")
 # Gemini task type for RAG document indexing
 _RETRIEVAL_DOCUMENT_TASK = "RETRIEVAL_DOCUMENT"
 
+# Gemini task type for RAG query retrieval (Phase 9.8)
+_RETRIEVAL_QUERY_TASK = "RETRIEVAL_QUERY"
+
 # Known output dimensionality for gemini-embedding-001 (default full precision)
 _DEFAULT_DIMENSIONS = 3072
 
@@ -172,6 +175,46 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         return [self._build_result(req, vec) for req, vec in zip(requests, vectors)]
 
     # ------------------------------------------------------------------
+    # Query embedding (Phase 9.8)
+    # ------------------------------------------------------------------
+
+    def embed_query(self, query: str) -> List[float]:
+        """Embed a research query string using Gemini's RETRIEVAL_QUERY task type.
+
+        Places query embeddings into the exact same vector space as document
+        chunks embedded with RETRIEVAL_DOCUMENT.
+
+        Args:
+            query: Non-empty query string to embed.
+
+        Returns:
+            List[float]: Dense numeric embedding vector.
+
+        Raises:
+            EmbeddingEmptyInputError: If query text is blank or whitespace-only.
+            EmbeddingAuthenticationError: If API key is invalid.
+            EmbeddingProviderUnavailableError: If provider is unreachable.
+            EmbeddingProviderRateLimitError: If rate-limited.
+            EmbeddingInvalidResponseError: If response is malformed.
+            EmbeddingDimensionMismatchError: If returned vector dimension != dimensions.
+            EmbeddingError: For any other provider-level failure.
+        """
+        if not isinstance(query, str) or not query.strip():
+            raise EmbeddingEmptyInputError(
+                "Query text cannot be empty or whitespace-only.",
+                provider="gemini",
+            )
+
+        logger.debug(
+            "Embedding query (chars=%d) via %s with task=%s",
+            len(query),
+            self._model,
+            _RETRIEVAL_QUERY_TASK,
+        )
+
+        return self._call_api_query(query.strip())
+
+    # ------------------------------------------------------------------
     # Internal API call helpers
     # ------------------------------------------------------------------
 
@@ -213,6 +256,24 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
             self._map_api_exception(exc, context=context)
 
         return self._extract_vector_batch(response, chunk_ids)
+
+    def _call_api_query(self, query: str) -> List[float]:
+        """Call Gemini embed_content for a retrieval query, return the float vector."""
+        try:
+            from google.genai import types as genai_types
+
+            response = self._client.models.embed_content(
+                model=self._model,
+                contents=query,
+                config=genai_types.EmbedContentConfig(
+                    task_type=_RETRIEVAL_QUERY_TASK,
+                    output_dimensionality=self._dimensions,
+                ),
+            )
+        except Exception as exc:
+            self._map_api_exception(exc, context="query embedding")
+
+        return self._extract_vector_single(response, "query")
 
     def _map_api_exception(self, exc: Exception, context: str) -> None:
         """Convert google-genai API exceptions to typed EmbeddingError subclasses."""
