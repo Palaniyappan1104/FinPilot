@@ -30,6 +30,16 @@ from app.models.news import (
     NewsArticle,
     NewsSearchResult,
 )
+from app.models.news_processing import (
+    ALLOWED_EVENT_TYPES,
+    ALLOWED_SENTIMENTS,
+    ArticleClassification,
+    NewsEvent,
+    NewsEventType,
+    NewsProcessingBatchResult,
+    ProcessedNewsArticle,
+    SentimentType,
+)
 from app.models.technical_metrics import (
     MACDMetrics,
     MovingAverageMetrics,
@@ -42,6 +52,9 @@ from app.models.technical_metrics import (
 )
 
 __all__ = [
+    "ALLOWED_EVENT_TYPES",
+    "ALLOWED_SENTIMENTS",
+    "ArticleClassification",
     "BalanceSheetPeriod",
     "CashFlowMetrics",
     "CashFlowPeriod",
@@ -56,12 +69,17 @@ __all__ = [
     "MetricSource",
     "MovingAverageMetrics",
     "NewsArticle",
+    "NewsEvent",
+    "NewsEventType",
+    "NewsProcessingBatchResult",
     "NewsSearchResult",
     "OHLCVCandle",
+    "ProcessedNewsArticle",
     "ProfitabilityMetrics",
     "ProviderRawSnapshot",
     "RSIMetrics",
     "RevenueHistoryItem",
+    "SentimentType",
     "SupportResistanceMetrics",
     "TechnicalMetrics",
     "TechnicalScoreBreakdown",
