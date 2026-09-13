@@ -12,6 +12,7 @@ Provides:
 """
 
 import re
+from datetime import datetime
 from typing import Any, List, Optional
 
 from app.core.logging import get_logger
@@ -156,11 +157,18 @@ class ExtractedDocumentValidator:
         self.max_unprintable_ratio = max_unprintable_ratio
         self.min_page_characters = min_page_characters
 
-    def validate(self, extraction_result: Any) -> ValidatedDocument:
+    def validate(
+        self,
+        extraction_result: Any,
+        original_filename: Optional[str] = None,
+        uploaded_at: Optional[datetime] = None,
+    ) -> ValidatedDocument:
         """Validate an extracted document for well-formedness and usable text.
 
         Args:
             extraction_result: DocumentExtractionResult instance to validate.
+            original_filename: Optional source filename from upload.
+            uploaded_at: Optional upload timestamp.
 
         Returns:
             ValidatedDocument: Strongly-typed validated document model.
@@ -348,6 +356,8 @@ class ExtractedDocumentValidator:
             total_characters=total_usable_chars,
             total_words=total_usable_words,
             pages=validated_pages,
+            original_filename=original_filename,
+            uploaded_at=uploaded_at,
             validation_status="valid",
         )
 
@@ -440,7 +450,10 @@ def validate_document_content(
 
     # 3. Run validation
     v = validator or ExtractedDocumentValidator()
-    return v.validate(extraction_result)
+    return v.validate(
+        extraction_result,
+        original_filename=original_filename,
+    )
 
 
 def validate_stored_document(
@@ -466,7 +479,7 @@ def validate_stored_document(
             document_id=stored_document.document_id,
         ) from e
 
-    return validate_document_content(
+    doc = validate_document_content(
         content=content,
         original_filename=stored_document.original_filename,
         ticker=stored_document.ticker,
@@ -475,3 +488,22 @@ def validate_stored_document(
         document_id=stored_document.document_id,
         validator=validator,
     )
+
+    # Attach uploaded_at from stored_document metadata
+    if stored_document.uploaded_at and doc.uploaded_at is None:
+        return ValidatedDocument(
+            document_id=doc.document_id,
+            ticker=doc.ticker,
+            document_type=doc.document_type,
+            total_pages=doc.total_pages,
+            usable_pages=doc.usable_pages,
+            total_characters=doc.total_characters,
+            total_words=doc.total_words,
+            pages=doc.pages,
+            original_filename=stored_document.original_filename,
+            uploaded_at=stored_document.uploaded_at,
+            validation_status=doc.validation_status,
+            validated_at=doc.validated_at,
+        )
+
+    return doc
