@@ -4,6 +4,11 @@ Structural foundation for domain schemas, request/response models,
 and DB entities (Phase 2+).
 """
 
+from app.models.documents import (
+    DocumentType,
+    DocumentUploadResponse,
+    StoredDocument,
+)
 from app.models.financial_data import (
     BalanceSheetPeriod,
     CashFlowPeriod,
@@ -60,6 +65,8 @@ __all__ = [
     "CashFlowPeriod",
     "CompanyFundamentals",
     "CompanyProfile",
+    "DocumentType",
+    "DocumentUploadResponse",
     "FundamentalMetrics",
     "GrowthMetrics",
     "HistoricalMarketData",
@@ -80,6 +87,7 @@ __all__ = [
     "RSIMetrics",
     "RevenueHistoryItem",
     "SentimentType",
+    "StoredDocument",
     "SupportResistanceMetrics",
     "TechnicalMetrics",
     "TechnicalScoreBreakdown",

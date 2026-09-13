@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/finpilot"
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_data"
 
+    # Document Storage & Upload (Phase 9.1)
+    DOCUMENTS_STORAGE_PATH: str = "./storage/documents"
+    MAX_UPLOAD_SIZE_BYTES: int = 20 * 1024 * 1024  # 20 MB
+    ALLOWED_DOCUMENT_EXTENSIONS: List[str] = [".pdf"]
+    ALLOWED_DOCUMENT_MIME_TYPES: List[str] = [
+        "application/pdf",
+        "application/x-pdf",
+    ]
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
