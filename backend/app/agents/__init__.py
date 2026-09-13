@@ -8,6 +8,18 @@ Phase 3.2 implements the Conversation Agent.
 Phase 3.3 implements the Clarification Agent and completeness evaluation.
 """
 
+from app.agents.aggregator_schema import (
+    ALL_SPECIALISTS,
+    AggregatedEvidenceItem,
+    AggregatorInvestorProfile,
+    ReportAggregatorError,
+    ReportAggregatorInput,
+    ReportAggregatorValidationError,
+    SpecialistEntry,
+    SpecialistStatus,
+    SpecialistType,
+    UnifiedSpecialistAnalysis,
+)
 from app.agents.base import (
     Agent,
     AgentResult,
@@ -271,4 +283,14 @@ __all__ = [
     "validate_risk_analysis",
     "DeterministicRiskScore",
     "calculate_deterministic_risk_score",
+    "SpecialistStatus",
+    "SpecialistType",
+    "ALL_SPECIALISTS",
+    "AggregatedEvidenceItem",
+    "SpecialistEntry",
+    "AggregatorInvestorProfile",
+    "ReportAggregatorInput",
+    "UnifiedSpecialistAnalysis",
+    "ReportAggregatorError",
+    "ReportAggregatorValidationError",
 ]
