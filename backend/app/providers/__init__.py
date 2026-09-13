@@ -3,6 +3,18 @@
 Contains external data and service provider abstractions and concrete implementations.
 """
 
+from app.providers.embedding import (
+    EmbeddingAuthenticationError,
+    EmbeddingDimensionMismatchError,
+    EmbeddingEmptyInputError,
+    EmbeddingError,
+    EmbeddingInvalidResponseError,
+    EmbeddingProvider,
+    EmbeddingProviderNotConfiguredError,
+    EmbeddingProviderRateLimitError,
+    EmbeddingProviderUnavailableError,
+    get_embedding_provider,
+)
 from app.providers.exceptions import (
     EmptyMarketDataError,
     EmptyNewsDataError,
@@ -31,6 +43,9 @@ from app.providers.financial_data import (
 from app.providers.finnhub_news import (
     FinnhubNewsProvider,
 )
+from app.providers.gemini_embedding import (
+    GeminiEmbeddingProvider,
+)
 from app.providers.market_data import (
     MarketDataProvider,
     get_market_data_provider,
@@ -44,11 +59,21 @@ from app.providers.yahoo_market_data import (
 )
 
 __all__ = [
+    "EmbeddingAuthenticationError",
+    "EmbeddingDimensionMismatchError",
+    "EmbeddingEmptyInputError",
+    "EmbeddingError",
+    "EmbeddingInvalidResponseError",
+    "EmbeddingProvider",
+    "EmbeddingProviderNotConfiguredError",
+    "EmbeddingProviderRateLimitError",
+    "EmbeddingProviderUnavailableError",
     "EmptyMarketDataError",
     "EmptyNewsDataError",
     "FinancialDataError",
     "FinancialDataProvider",
     "FinnhubNewsProvider",
+    "GeminiEmbeddingProvider",
     "MarketDataError",
     "MarketDataMalformedError",
     "MarketDataProvider",
@@ -68,6 +93,7 @@ __all__ = [
     "ProviderUnavailableError",
     "TickerNotFoundError",
     "YahooFinanceMarketDataProvider",
+    "get_embedding_provider",
     "get_financial_data_provider",
     "get_market_data_provider",
     "get_news_provider",

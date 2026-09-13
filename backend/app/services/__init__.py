@@ -12,6 +12,11 @@ from app.services.document_chunker import (
     InvalidChunkConfigurationError,
     chunk_document,
 )
+from app.services.document_embedder import (
+    DocumentEmbedder,
+    chunk_to_embedding_request,
+    embed_chunked_document,
+)
 from app.services.document_metadata import (
     InvalidMetadataError,
     MetadataError,
@@ -67,6 +72,7 @@ __all__ = [
     "CorruptedDocumentError",
     "DocumentChunker",
     "DocumentCorruptedFormatError",
+    "DocumentEmbedder",
     "DocumentEmptyError",
     "DocumentExtractionError",
     "DocumentFileSizeExceededError",
@@ -98,8 +104,10 @@ __all__ = [
     "calculate_fundamental_metrics",
     "calculate_technical_metrics",
     "chunk_document",
+    "chunk_to_embedding_request",
     "clean_extracted_text",
     "create_chunk_metadata",
+    "embed_chunked_document",
     "get_document_extractor",
     "validate_document_content",
     "validate_document_file",

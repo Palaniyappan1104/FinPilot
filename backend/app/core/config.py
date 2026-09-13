@@ -56,6 +56,11 @@ class Settings(BaseSettings):
         "application/x-pdf",
     ]
 
+    # Embedding Provider (Phase 9.6)
+    EMBEDDING_PROVIDER: str = "gemini"
+    EMBEDDING_MODEL: str = "gemini-embedding-001"
+    EMBEDDING_DIMENSIONS: int = 3072
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",

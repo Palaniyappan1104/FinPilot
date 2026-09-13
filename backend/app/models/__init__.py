@@ -16,6 +16,12 @@ from app.models.documents import (
     ValidatedDocument,
     ValidatedPage,
 )
+from app.models.embeddings import (
+    ChunkEmbeddingRequest,
+    ChunkEmbeddingResult,
+    DocumentEmbeddingBatch,
+    EmbeddingModelInfo,
+)
 from app.models.financial_data import (
     BalanceSheetPeriod,
     CashFlowPeriod,
@@ -70,14 +76,18 @@ __all__ = [
     "BalanceSheetPeriod",
     "CashFlowMetrics",
     "CashFlowPeriod",
+    "ChunkEmbeddingRequest",
+    "ChunkEmbeddingResult",
     "ChunkMetadata",
     "ChunkedDocument",
     "CompanyFundamentals",
     "CompanyProfile",
     "DocumentChunk",
+    "DocumentEmbeddingBatch",
     "DocumentExtractionResult",
     "DocumentType",
     "DocumentUploadResponse",
+    "EmbeddingModelInfo",
     "ExtractedPage",
     "FundamentalMetrics",
     "GrowthMetrics",
