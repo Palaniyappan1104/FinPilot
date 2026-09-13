@@ -86,6 +86,15 @@ from app.agents.news_schema import (
     OverallSentimentType,
     RecentNewsItem,
 )
+from app.agents.research import ResearchAnalystAgent
+from app.agents.research_schema import (
+    InvalidProvenanceError,
+    ResearchAnalysisOutput,
+    ResearchAnalystInput,
+    ResearchEvidenceRef,
+    ResearchFinding,
+    ResearchValidationError,
+)
 from app.agents.specialist_stubs import (
     SPECIALIST_STATE_KEY_MAP,
     create_specialist_stub_node,
@@ -192,4 +201,11 @@ __all__ = [
     "RecentNewsItem",
     "OverallSentimentType",
     "ALLOWED_OVERALL_SENTIMENTS",
+    "ResearchAnalystAgent",
+    "ResearchAnalystInput",
+    "ResearchAnalysisOutput",
+    "ResearchEvidenceRef",
+    "ResearchFinding",
+    "ResearchValidationError",
+    "InvalidProvenanceError",
 ]
