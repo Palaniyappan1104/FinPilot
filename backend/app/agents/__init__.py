@@ -99,6 +99,11 @@ from app.agents.research_schema import (
     ResearchFinding,
     ResearchValidationError,
 )
+from app.agents.risk_prompt import (
+    RISK_CATEGORY_DESCRIPTIONS,
+    RISK_SYSTEM_PROMPT,
+    format_risk_prompt,
+)
 from app.agents.risk_schema import (
     FundamentalRiskSignals,
     NewsRiskSignals,
@@ -249,4 +254,7 @@ __all__ = [
     "ResearchRiskSignals",
     "RiskAnalystError",
     "RiskAnalysisValidationError",
+    "RISK_CATEGORY_DESCRIPTIONS",
+    "RISK_SYSTEM_PROMPT",
+    "format_risk_prompt",
 ]
