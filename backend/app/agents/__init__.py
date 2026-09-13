@@ -99,6 +99,11 @@ from app.agents.research_schema import (
     ResearchFinding,
     ResearchValidationError,
 )
+from app.agents.risk import (
+    RiskAnalystAgent,
+    risk_analyst_node,
+    validate_risk_analysis,
+)
 from app.agents.risk_prompt import (
     RISK_CATEGORY_DESCRIPTIONS,
     RISK_SYSTEM_PROMPT,
@@ -119,6 +124,10 @@ from app.agents.risk_schema import (
     RiskProbability,
     RiskSeverity,
     TechnicalRiskSignals,
+)
+from app.agents.risk_scoring import (
+    DeterministicRiskScore,
+    calculate_deterministic_risk_score,
 )
 from app.agents.specialist_stubs import (
     SPECIALIST_STATE_KEY_MAP,
@@ -257,4 +266,9 @@ __all__ = [
     "RISK_CATEGORY_DESCRIPTIONS",
     "RISK_SYSTEM_PROMPT",
     "format_risk_prompt",
+    "RiskAnalystAgent",
+    "risk_analyst_node",
+    "validate_risk_analysis",
+    "DeterministicRiskScore",
+    "calculate_deterministic_risk_score",
 ]

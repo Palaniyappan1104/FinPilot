@@ -284,6 +284,23 @@ class TechnicalRiskSignals(BaseModel):
                 rsi_val = rsi_obj.get("value")
             elif hasattr(rsi_obj, "value"):
                 rsi_val = rsi_obj.value
+            elif isinstance(rsi_obj, (int, float)):
+                rsi_val = float(rsi_obj)
+        elif hasattr(ind_sum, "rsi"):
+            rsi_obj = getattr(ind_sum, "rsi")
+            if hasattr(rsi_obj, "value"):
+                rsi_val = rsi_obj.value
+            elif isinstance(rsi_obj, (int, float)):
+                rsi_val = float(rsi_obj)
+
+        if rsi_val is None and "rsi" in payload:
+            raw_rsi = payload["rsi"]
+            if isinstance(raw_rsi, (int, float)):
+                rsi_val = float(raw_rsi)
+            elif isinstance(raw_rsi, dict):
+                rsi_val = raw_rsi.get("value")
+            elif hasattr(raw_rsi, "value"):
+                rsi_val = raw_rsi.value
 
         return cls(
             ticker=ticker.strip().upper(),
@@ -742,6 +759,16 @@ class RiskAnalysisOutput(BaseModel):
         ge=0.0,
         le=1.0,
         description="Analytical confidence score reflecting data completeness.",
+    )
+    deterministic_risk_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Pre-computed quantitative risk score (0.0=lowest, 1.0=critical).",
+    )
+    deterministic_risk_level: Optional[RiskSeverity] = Field(
+        default=None,
+        description="Deterministic risk severity mapped from quantitative score.",
     )
 
     @field_validator("ticker")

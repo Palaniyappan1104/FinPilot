@@ -19,7 +19,7 @@ Phase 10.2 establishes:
   available signals into clear, demarcated context blocks.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.agents.risk_schema import (
     RiskAnalystInput,
@@ -187,11 +187,15 @@ RISK_SYSTEM_PROMPT = (
 # ===========================================================================
 
 
-def format_risk_prompt(input_data: RiskAnalystInput) -> str:
+def format_risk_prompt(
+    input_data: RiskAnalystInput,
+    deterministic_assessment: Optional[Any] = None,
+) -> str:
     """Format a structured, injection-resistant prompt for the Risk Analyst.
 
     Args:
         input_data: Validated RiskAnalystInput containing available signals.
+        deterministic_assessment: Optional DeterministicRiskScore quantitative baseline.
 
     Returns:
         str: Grounded LLM prompt string.
@@ -308,7 +312,33 @@ def format_risk_prompt(input_data: RiskAnalystInput) -> str:
             f"Document Findings: {findings_str}"
         )
 
-    # 6. Response Instructions
+    # 6. Deterministic Quantitative Baseline (Phase 10.3.3)
+    if deterministic_assessment is not None:
+        sections.append("\n--- [DETERMINISTIC QUANTITATIVE BASELINE] ---")
+        if (
+            not deterministic_assessment.insufficient_data
+            and deterministic_assessment.score is not None
+        ):
+            lvl = (
+                deterministic_assessment.level.value
+                if deterministic_assessment.level
+                else "N/A"
+            )
+            sections.append(
+                f"Computed Quantitative Risk Score: "
+                f"{deterministic_assessment.score:.2f} ({lvl})\n"
+                f"Breakdown: {deterministic_assessment.explanation}\n"
+                "Task: Explain the analytical reasoning behind these quantitative "
+                "indicators and synthesize qualitative factors across all categories."
+            )
+        else:
+            sections.append(
+                "[INSUFFICIENT QUANTITATIVE DATA FOR DETERMINISTIC SCORING]\n"
+                "Explain that baseline quantitative scoring is unavailable and "
+                "evaluate risk qualitatively based strictly on supplied evidence."
+            )
+
+    # 7. Response Instructions
     sections.append(
         "\n==================================================\n"
         "RESPONSE INSTRUCTIONS:\n"
