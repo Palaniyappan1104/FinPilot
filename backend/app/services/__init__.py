@@ -47,6 +47,11 @@ from app.services.document_validator import (
     validate_document_file,
     validate_ticker,
 )
+from app.services.document_vector_service import (
+    chunk_embedding_to_vector_record,
+    store_chunk_embeddings,
+    store_document_embeddings,
+)
 from app.services.fundamental_metrics import calculate_fundamental_metrics
 from app.services.news_processor import NewsProcessor
 from app.services.technical_metrics import calculate_technical_metrics
@@ -104,11 +109,14 @@ __all__ = [
     "calculate_fundamental_metrics",
     "calculate_technical_metrics",
     "chunk_document",
+    "chunk_embedding_to_vector_record",
     "chunk_to_embedding_request",
     "clean_extracted_text",
     "create_chunk_metadata",
     "embed_chunked_document",
     "get_document_extractor",
+    "store_chunk_embeddings",
+    "store_document_embeddings",
     "validate_document_content",
     "validate_document_file",
     "validate_extracted_document",

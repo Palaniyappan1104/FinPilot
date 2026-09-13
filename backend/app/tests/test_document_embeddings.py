@@ -119,6 +119,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
             chunk_index=request.chunk_index,
             section_name=request.section_name,
             metadata=request.metadata,
+            text=request.text,
             embedding=list(_MOCK_VECTOR),
             embedding_model=self.model_name,
             embedding_dimensions=self.dimensions,

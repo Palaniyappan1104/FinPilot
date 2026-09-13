@@ -68,6 +68,10 @@ from app.models.technical_metrics import (
     TrendDirection,
     VolumeMetrics,
 )
+from app.models.vector_store import (
+    VectorRecord,
+    VectorStoreInsertionResult,
+)
 
 __all__ = [
     "ALLOWED_EVENT_TYPES",
@@ -117,5 +121,7 @@ __all__ = [
     "ValuationMetrics",
     "ValidatedDocument",
     "ValidatedPage",
+    "VectorRecord",
+    "VectorStoreInsertionResult",
     "VolumeMetrics",
 ]

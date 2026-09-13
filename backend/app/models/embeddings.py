@@ -96,6 +96,10 @@ class ChunkEmbeddingResult(BaseModel):
         default=None,
         description="Full ChunkMetadata from Phase 9.5 if available",
     )
+    text: Optional[str] = Field(
+        default=None,
+        description="Raw chunk text content",
+    )
     embedding: List[float] = Field(
         description="Dense numeric embedding vector for this chunk"
     )

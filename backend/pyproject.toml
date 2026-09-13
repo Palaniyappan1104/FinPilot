@@ -20,6 +20,7 @@ dependencies = [
     "yfinance>=0.2.40",
     "python-multipart>=0.0.9",
     "pypdf>=5.0.0",
+    "chromadb>=0.5.0",
 ]
 
 [project.optional-dependencies]

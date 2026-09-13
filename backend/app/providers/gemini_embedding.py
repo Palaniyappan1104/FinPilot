@@ -336,6 +336,7 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
             chunk_index=request.chunk_index,
             section_name=request.section_name,
             metadata=request.metadata,
+            text=request.text,
             embedding=vector,
             embedding_model=self._model,
             embedding_dimensions=len(vector),
