@@ -9,9 +9,13 @@ Defines:
 
 import re
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import Dict, List, Optional, Union
 
-from app.models.vector_store import VectorRecord, VectorStoreInsertionResult
+from app.models.vector_store import (
+    VectorRecord,
+    VectorSearchResult,
+    VectorStoreInsertionResult,
+)
 from app.storage.vector_exceptions import (
     InvalidCollectionNameError,
 )
@@ -294,4 +298,34 @@ class VectorStore(ABC):
         Raises:
             CollectionNotFoundError: If collection does not exist.
             VectorStoreError: On database failure.
+        """
+
+    @abstractmethod
+    def query_similarity(
+        self,
+        collection_name: str,
+        query_embedding: List[float],
+        n_results: int = 10,
+        where: Optional[Dict[str, Union[str, int, float, bool]]] = None,
+    ) -> List[VectorSearchResult]:
+        """Perform vector similarity search against a collection (Phase 9.9).
+
+        Finds the nearest stored records to the query embedding vector using
+        the collection's distance metric (e.g. cosine distance).
+
+        Args:
+            collection_name: Target collection name.
+            query_embedding: Dense numeric query vector.
+            n_results: Maximum number of nearest matches to return.
+            where: Optional metadata filter dictionary.
+
+        Returns:
+            List[VectorSearchResult]: Matches sorted by proximity.
+
+        Raises:
+            InvalidCollectionNameError: If collection name is invalid.
+            CollectionNotFoundError: If collection does not exist.
+            VectorValidationError: If query embedding is empty or non-finite.
+            VectorDimensionMismatchError: If query vector dimension mismatches.
+            VectorStoreError: On underlying database failure.
         """

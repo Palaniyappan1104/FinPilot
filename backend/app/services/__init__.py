@@ -55,6 +55,12 @@ from app.services.document_vector_service import (
 from app.services.fundamental_metrics import calculate_fundamental_metrics
 from app.services.news_processor import NewsProcessor
 from app.services.query_embedder import QueryEmbedder, embed_query
+from app.services.similarity_search import (
+    SimilaritySearchService,
+    search_company_similarity,
+    search_document_similarity,
+    search_similarity,
+)
 from app.services.technical_metrics import calculate_technical_metrics
 from app.services.text_extraction import (
     DocumentTextExtractor,
@@ -103,6 +109,7 @@ __all__ = [
     "PlainTextExtractor",
     "QueryEmbedder",
     "ScannedDocumentError",
+    "SimilaritySearchService",
     "UnusableExtractedTextError",
     "UnsupportedDocumentError",
     "UnsupportedDocumentFormatError",
@@ -118,6 +125,9 @@ __all__ = [
     "embed_chunked_document",
     "embed_query",
     "get_document_extractor",
+    "search_company_similarity",
+    "search_document_similarity",
+    "search_similarity",
     "store_chunk_embeddings",
     "store_document_embeddings",
     "validate_document_content",

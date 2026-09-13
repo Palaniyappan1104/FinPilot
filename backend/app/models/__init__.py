@@ -71,7 +71,9 @@ from app.models.technical_metrics import (
     VolumeMetrics,
 )
 from app.models.vector_store import (
+    SimilaritySearchResults,
     VectorRecord,
+    VectorSearchResult,
     VectorStoreInsertionResult,
 )
 
@@ -117,6 +119,7 @@ __all__ = [
     "RSIMetrics",
     "RevenueHistoryItem",
     "SentimentType",
+    "SimilaritySearchResults",
     "StoredDocument",
     "SupportResistanceMetrics",
     "TechnicalMetrics",
@@ -126,6 +129,7 @@ __all__ = [
     "ValidatedDocument",
     "ValidatedPage",
     "VectorRecord",
+    "VectorSearchResult",
     "VectorStoreInsertionResult",
     "VolumeMetrics",
 ]

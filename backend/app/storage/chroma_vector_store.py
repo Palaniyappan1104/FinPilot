@@ -9,11 +9,15 @@ Fully isolates ChromaDB from the rest of the application.
 
 import math
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from app.core.config import Settings, get_settings
 from app.core.logging import get_logger
-from app.models.vector_store import VectorRecord, VectorStoreInsertionResult
+from app.models.vector_store import (
+    VectorRecord,
+    VectorSearchResult,
+    VectorStoreInsertionResult,
+)
 from app.storage.vector_base import (
     VectorStore,
     validate_collection_name,
@@ -309,6 +313,168 @@ class ChromaVectorStore(VectorStore):
                 f"Failed to delete records from collection '{validated_name}': {exc}",
                 collection=validated_name,
             ) from exc
+
+    # ------------------------------------------------------------------
+    # Similarity search (Phase 9.9)
+    # ------------------------------------------------------------------
+
+    def query_similarity(
+        self,
+        collection_name: str,
+        query_embedding: List[float],
+        n_results: int = 10,
+        where: Optional[Dict[str, Union[str, int, float, bool]]] = None,
+    ) -> List[VectorSearchResult]:
+        """Perform vector similarity search against a collection (Phase 9.9).
+
+        Queries ChromaDB for the nearest stored chunks to query_embedding.
+        Returns matches sorted by proximity with explicit distance semantics.
+
+        Args:
+            collection_name: Target collection name.
+            query_embedding: Dense numeric query vector.
+            n_results: Number of nearest matches to return (must be > 0).
+            where: Optional metadata filter dictionary.
+
+        Returns:
+            List[VectorSearchResult]: Ranked matches with distances and provenance.
+
+        Raises:
+            InvalidCollectionNameError: If collection name is invalid.
+            CollectionNotFoundError: If collection does not exist.
+            VectorValidationError: If query vector or n_results is invalid.
+            VectorDimensionMismatchError: If query vector dimension mismatches.
+            VectorStoreError: On database or query failure.
+        """
+        validated_name = validate_collection_name(collection_name)
+
+        if not self.has_collection(validated_name):
+            raise CollectionNotFoundError(validated_name)
+
+        if n_results <= 0:
+            raise VectorValidationError(
+                f"n_results must be greater than 0, got {n_results}.",
+                collection=validated_name,
+            )
+
+        # Validate query embedding
+        if not query_embedding or not isinstance(query_embedding, (list, tuple)):
+            raise VectorValidationError(
+                "Query embedding must be a non-empty list of floats.",
+                collection=validated_name,
+            )
+
+        try:
+            vec: List[float] = [float(x) for x in query_embedding]
+        except (TypeError, ValueError) as exc:
+            raise VectorValidationError(
+                f"Query embedding contains non-numeric values: {exc}",
+                collection=validated_name,
+            ) from exc
+
+        if not vec:
+            raise VectorValidationError(
+                "Query embedding must be a non-empty list of floats.",
+                collection=validated_name,
+            )
+
+        non_finite = [x for x in vec if not math.isfinite(x)]
+        if non_finite:
+            raise VectorValidationError(
+                f"Query embedding contains {len(non_finite)} non-finite value(s).",
+                collection=validated_name,
+            )
+
+        try:
+            col = self._client.get_collection(name=validated_name)
+        except CollectionNotFoundError:
+            raise
+        except Exception as exc:
+            raise VectorStoreError(
+                f"Failed to access collection '{validated_name}': {exc}",
+                collection=validated_name,
+            ) from exc
+
+        count = col.count()
+        if count == 0:
+            logger.debug(
+                "Collection '%s' is empty. Returning empty similarity results.",
+                validated_name,
+            )
+            return []
+
+        actual_n = min(n_results, count)
+
+        # Determine distance metric from collection metadata if available
+        metric_name = "cosine_distance"
+        col_meta = getattr(col, "metadata", None) or {}
+        hnsw_space = col_meta.get("hnsw:space") if isinstance(col_meta, dict) else None
+        if hnsw_space == "l2":
+            metric_name = "l2_distance"
+        elif hnsw_space == "ip":
+            metric_name = "inner_product"
+        elif hnsw_space == "cosine":
+            metric_name = "cosine_distance"
+
+        query_kwargs: Dict[str, Any] = {
+            "query_embeddings": [vec],
+            "n_results": actual_n,
+            "include": ["documents", "metadatas", "distances"],
+        }
+        if where:
+            query_kwargs["where"] = where
+
+        try:
+            raw = col.query(**query_kwargs)
+        except Exception as exc:
+            exc_str = str(exc).lower()
+            if "dimension" in exc_str:
+                raise VectorDimensionMismatchError(
+                    f"Query vector dimension mismatch for collection "
+                    f"'{validated_name}': {exc}",
+                    collection=validated_name,
+                ) from exc
+            raise VectorStoreError(
+                f"Failed to execute similarity query on collection "
+                f"'{validated_name}': {exc}",
+                collection=validated_name,
+            ) from exc
+
+        raw_ids_list = raw.get("ids") or []
+        if not raw_ids_list or not raw_ids_list[0]:
+            return []
+
+        raw_ids = raw_ids_list[0]
+        raw_distances_list = raw.get("distances") or []
+        raw_documents_list = raw.get("documents") or []
+        raw_metadatas_list = raw.get("metadatas") or []
+
+        raw_distances = raw_distances_list[0] if raw_distances_list else []
+        raw_documents = raw_documents_list[0] if raw_documents_list else []
+        raw_metadatas = raw_metadatas_list[0] if raw_metadatas_list else []
+
+        if len(raw_ids) != len(raw_distances) or len(raw_ids) != len(raw_documents):
+            raise VectorStoreError(
+                "Malformed response from ChromaDB: mismatched array lengths "
+                f"(ids={len(raw_ids)}, distances={len(raw_distances)}, "
+                f"documents={len(raw_documents)}).",
+                collection=validated_name,
+            )
+
+        results: List[VectorSearchResult] = []
+        for i, match_id in enumerate(raw_ids):
+            meta = raw_metadatas[i] if raw_metadatas and i < len(raw_metadatas) else {}
+            results.append(
+                VectorSearchResult(
+                    id=str(match_id),
+                    distance=float(raw_distances[i]),
+                    document=str(raw_documents[i]),
+                    metadata=meta if isinstance(meta, dict) else {},
+                    distance_metric=metric_name,
+                )
+            )
+
+        return results
 
     # ------------------------------------------------------------------
     # Batch validation helper
