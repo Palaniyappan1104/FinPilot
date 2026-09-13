@@ -74,6 +74,15 @@ from app.models.news_processing import (
     ProcessedNewsArticle,
     SentimentType,
 )
+from app.models.relevance import (
+    REASON_INSUFFICIENT_RELEVANT_CHUNKS,
+    REASON_NO_EVIDENCE_WITHIN_THRESHOLD,
+    REASON_NO_RETRIEVED_EVIDENCE,
+    REASON_NOT_ALL_CHUNKS_RELEVANT,
+    REASON_SUFFICIENT_EVIDENCE,
+    RelevanceCheckResult,
+    RelevanceConfig,
+)
 from app.models.retrieval import (
     TopKConfig,
     TopKRetrievalResult,
@@ -142,6 +151,13 @@ __all__ = [
     "ProviderRawSnapshot",
     "QueryEmbeddingRequest",
     "QueryEmbeddingResult",
+    "REASON_INSUFFICIENT_RELEVANT_CHUNKS",
+    "REASON_NO_EVIDENCE_WITHIN_THRESHOLD",
+    "REASON_NO_RETRIEVED_EVIDENCE",
+    "REASON_NOT_ALL_CHUNKS_RELEVANT",
+    "REASON_SUFFICIENT_EVIDENCE",
+    "RelevanceCheckResult",
+    "RelevanceConfig",
     "RSIMetrics",
     "ResearchEvidence",
     "RetrievalContext",

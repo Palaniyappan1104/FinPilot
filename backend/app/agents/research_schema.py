@@ -13,6 +13,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.context import RetrievalContext
+from app.models.relevance import RelevanceConfig
 
 # ===========================================================================
 # TYPED EXCEPTIONS (Phase 9.12)
@@ -174,6 +175,10 @@ class ResearchAnalystInput(BaseModel):
     query: str = Field(description="User research query")
     context: RetrievalContext = Field(
         description="Structured retrieval context from Phase 9.11"
+    )
+    relevance_config: Optional[RelevanceConfig] = Field(
+        default=None,
+        description="Optional relevance check policy configuration (Phase 9.15)",
     )
 
     @field_validator("query", mode="before")

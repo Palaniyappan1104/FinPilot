@@ -33,6 +33,14 @@ from app.core.llm.factory import get_llm_provider
 from app.core.llm.structured import generate_structured
 from app.core.logging import get_logger
 from app.models.context import ContextChunk, RetrievalContext
+from app.models.relevance import (
+    REASON_INSUFFICIENT_RELEVANT_CHUNKS,
+    REASON_NO_EVIDENCE_WITHIN_THRESHOLD,
+    REASON_NO_RETRIEVED_EVIDENCE,
+    REASON_NOT_ALL_CHUNKS_RELEVANT,
+    RelevanceConfig,
+)
+from app.services.relevance_checker import RelevanceChecker
 
 logger = get_logger("app.agents.research")
 
@@ -229,16 +237,25 @@ class ResearchAnalystAgent(BaseAgent):
         self,
         provider: Optional[LLMProvider] = None,
         name: str = "research_analyst",
+        relevance_config: Optional[RelevanceConfig] = None,
+        relevance_checker: Optional[RelevanceChecker] = None,
     ) -> None:
-        """Initialize ResearchAnalystAgent with an optional LLMProvider.
+        """Initialize ResearchAnalystAgent with optional LLMProvider and
+        RelevanceConfig.
 
         Args:
             provider: Optional LLMProvider instance (defaults to factory setting).
             name: Agent identifier name.
+            relevance_config: Optional RelevanceConfig policy (defaults to 0.65).
+            relevance_checker: Optional RelevanceChecker service instance.
         """
         super().__init__()
         self._provider = provider
         self._name = name
+        self._relevance_config = relevance_config or RelevanceConfig()
+        self._relevance_checker = relevance_checker or RelevanceChecker(
+            default_config=self._relevance_config
+        )
 
     @property
     def provider(self) -> LLMProvider:
@@ -251,6 +268,16 @@ class ResearchAnalystAgent(BaseAgent):
     def name(self) -> str:
         """Unique identifier name of the agent."""
         return self._name
+
+    @property
+    def relevance_config(self) -> RelevanceConfig:
+        """Configured relevance policy."""
+        return self._relevance_config
+
+    @property
+    def relevance_checker(self) -> RelevanceChecker:
+        """Configured relevance checker service."""
+        return self._relevance_checker
 
     @property
     def input_schema(self) -> type:
@@ -280,12 +307,14 @@ class ResearchAnalystAgent(BaseAgent):
         self,
         query: str,
         context: RetrievalContext,
+        relevance_config: Optional[RelevanceConfig] = None,
     ) -> ResearchAnalysisOutput:
         """Execute document research analysis and return structured output.
 
         Args:
             query: Research question.
             context: RetrievalContext containing retrieved chunks.
+            relevance_config: Optional per-request RelevanceConfig policy override.
 
         Returns:
             ResearchAnalysisOutput: Grounded structured research analysis.
@@ -307,46 +336,107 @@ class ResearchAnalystAgent(BaseAgent):
                 "RetrievalContext exceeds configured character budget."
             )
 
-        # 3. Fast path for empty / zero-evidence context (no LLM call)
-        if not context.has_evidence or context.is_empty or len(context.chunks) == 0:
+        # 3. Evaluate retrieval relevance & sufficiency (Phase 9.15)
+        # Fast path for empty / zero-evidence or low-relevance context (no LLM call)
+        active_config = relevance_config or self._relevance_config
+        relevance_result = self._relevance_checker.check_relevance(
+            context=context,
+            config=active_config,
+        )
+
+        if not relevance_result.is_relevant:
             logger.info(
-                "RetrievalContext has no evidence chunks; returning "
-                "insufficient_evidence output without LLM call."
+                "RetrievalContext deemed insufficient/irrelevant (reason=%s); "
+                "returning insufficient_evidence output without LLM call.",
+                relevance_result.reason,
             )
-            return ResearchAnalysisOutput(
-                query=clean_query,
-                answer=(
+            if relevance_result.reason == REASON_NO_RETRIEVED_EVIDENCE:
+                answer = (
                     "Insufficient evidence: No relevant documents or evidence chunks "
                     "were found in the repository to answer the query."
-                ),
+                )
+                reason_text = (
+                    "RetrievalContext contains no evidence chunks (empty retrieval)."
+                )
+            elif relevance_result.reason == REASON_NO_EVIDENCE_WITHIN_THRESHOLD:
+                answer = (
+                    "Insufficient evidence: The Research Vault does not contain "
+                    "sufficiently relevant documents or evidence to answer this query. "
+                    "No document-grounded answer can be provided."
+                )
+                best_dist_str = (
+                    f"{relevance_result.best_distance:.4f}"
+                    if relevance_result.best_distance is not None
+                    else "N/A"
+                )
+                reason_text = (
+                    f"No retrieved chunks met the maximum distance threshold of "
+                    f"{relevance_result.threshold_used:.4f} (best distance was "
+                    f"{best_dist_str} across {relevance_result.total_chunks} chunks)."
+                )
+            elif relevance_result.reason == REASON_INSUFFICIENT_RELEVANT_CHUNKS:
+                answer = (
+                    "Insufficient evidence: The Research Vault does not contain enough "
+                    "relevant evidence to meet the minimum sufficiency threshold."
+                )
+                reason_text = (
+                    f"Only {relevance_result.relevant_chunks_count} chunk(s) met "
+                    f"the distance threshold of "
+                    f"{relevance_result.threshold_used:.4f}, but at least "
+                    f"{relevance_result.min_chunks_required} are required."
+                )
+            elif relevance_result.reason == REASON_NOT_ALL_CHUNKS_RELEVANT:
+                answer = (
+                    "Insufficient evidence: Some retrieved chunks exceeded the "
+                    "relevance threshold and policy requires all chunks to be relevant."
+                )
+                reason_text = (
+                    f"{relevance_result.rejected_chunks_count} of "
+                    f"{relevance_result.total_chunks} chunk(s) exceeded the distance "
+                    f"threshold of {relevance_result.threshold_used:.4f}."
+                )
+            else:
+                answer = (
+                    "Insufficient evidence: The Research Vault does not contain "
+                    "sufficiently relevant evidence to answer the query."
+                )
+                reason_text = (
+                    f"Relevance check failed with reason: {relevance_result.reason}"
+                )
+
+            return ResearchAnalysisOutput(
+                query=clean_query,
+                answer=answer,
                 key_findings=[],
                 evidence=[],
                 confidence=0.0,
                 insufficient_evidence=True,
-                insufficient_reason=(
-                    "RetrievalContext contains no evidence chunks (empty retrieval)."
-                ),
+                insufficient_reason=reason_text,
             )
 
-        # 4. Format prompt
-        prompt = format_research_prompt(query=clean_query, context=context)
+        # 4. If relevant, select the active context:
+        # If weak chunks were filtered out, use the unmutated derived_context!
+        active_context = relevance_result.derived_context or context
 
-        # 5. Call LLM for structured output
+        # 5. Format prompt
+        prompt = format_research_prompt(query=clean_query, context=active_context)
+
+        # 6. Call LLM for structured output
         output: ResearchAnalysisOutput = generate_structured(
             provider=self.provider,
             prompt=prompt,
             schema=ResearchAnalysisOutput,
         )
 
-        # 6. Apply deterministic grounding and provenance validation
-        validate_research_analysis(output=output, context=context)
+        # 7. Apply deterministic grounding and provenance validation
+        validate_research_analysis(output=output, context=active_context)
 
-        # 7. Safe operational logging
+        # 8. Safe operational logging
         logger.info(
             "Research analysis completed for query length=%d: chunks=%d, "
             "findings=%d, confidence=%.2f, insufficient_evidence=%s",
             len(clean_query),
-            len(context.chunks),
+            len(active_context.chunks),
             len(output.key_findings),
             output.confidence,
             output.insufficient_evidence,
@@ -392,6 +482,7 @@ class ResearchAnalystAgent(BaseAgent):
             output = self.analyze(
                 query=parsed_input.query,
                 context=parsed_input.context,
+                relevance_config=parsed_input.relevance_config,
             )
             return AgentResult.create_success(
                 data=output,

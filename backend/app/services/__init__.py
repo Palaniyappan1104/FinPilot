@@ -66,6 +66,10 @@ from app.services.evidence_tracker import EvidenceTracker, track_evidence
 from app.services.fundamental_metrics import calculate_fundamental_metrics
 from app.services.news_processor import NewsProcessor
 from app.services.query_embedder import QueryEmbedder, embed_query
+from app.services.relevance_checker import (
+    RelevanceChecker,
+    check_retrieval_relevance,
+)
 from app.services.similarity_search import (
     SimilaritySearchService,
     search_company_similarity,
@@ -139,6 +143,7 @@ __all__ = [
     "PdfTextExtractor",
     "PlainTextExtractor",
     "QueryEmbedder",
+    "RelevanceChecker",
     "ScannedDocumentError",
     "SimilaritySearchService",
     "TopKRetrievalError",
@@ -152,6 +157,7 @@ __all__ = [
     "build_retrieval_context",
     "calculate_fundamental_metrics",
     "calculate_technical_metrics",
+    "check_retrieval_relevance",
     "chunk_document",
     "chunk_embedding_to_vector_record",
     "chunk_to_embedding_request",
