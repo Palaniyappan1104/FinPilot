@@ -5,8 +5,10 @@ and DB entities (Phase 2+).
 """
 
 from app.models.documents import (
+    DocumentExtractionResult,
     DocumentType,
     DocumentUploadResponse,
+    ExtractedPage,
     StoredDocument,
 )
 from app.models.financial_data import (
@@ -65,8 +67,10 @@ __all__ = [
     "CashFlowPeriod",
     "CompanyFundamentals",
     "CompanyProfile",
+    "DocumentExtractionResult",
     "DocumentType",
     "DocumentUploadResponse",
+    "ExtractedPage",
     "FundamentalMetrics",
     "GrowthMetrics",
     "HistoricalMarketData",
