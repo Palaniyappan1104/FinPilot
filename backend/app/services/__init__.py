@@ -4,6 +4,14 @@ Structural foundation for domain services, data providers,
 and business logic.
 """
 
+from app.services.document_chunker import (
+    ChunkingConfig,
+    ChunkingError,
+    DocumentChunker,
+    EmptyDocumentChunkingError,
+    InvalidChunkConfigurationError,
+    chunk_document,
+)
 from app.services.document_text_validator import (
     CorruptedDocumentError,
     DocumentTextValidationError,
@@ -46,7 +54,10 @@ from app.services.text_extraction_exceptions import (
 )
 
 __all__ = [
+    "ChunkingConfig",
+    "ChunkingError",
     "CorruptedDocumentError",
+    "DocumentChunker",
     "DocumentCorruptedFormatError",
     "DocumentEmptyError",
     "DocumentExtractionError",
@@ -56,9 +67,11 @@ __all__ = [
     "DocumentTextValidationError",
     "DocumentUnsupportedTypeError",
     "DocumentValidationError",
+    "EmptyDocumentChunkingError",
     "EmptyExtractedTextError",
     "EncryptedDocumentError",
     "ExtractedDocumentValidator",
+    "InvalidChunkConfigurationError",
     "InvalidTickerError",
     "MalformedDocumentError",
     "MalformedExtractionResultError",
@@ -71,6 +84,7 @@ __all__ = [
     "UnsupportedDocumentFormatError",
     "calculate_fundamental_metrics",
     "calculate_technical_metrics",
+    "chunk_document",
     "clean_extracted_text",
     "get_document_extractor",
     "validate_document_content",

@@ -5,6 +5,8 @@ and DB entities (Phase 2+).
 """
 
 from app.models.documents import (
+    ChunkedDocument,
+    DocumentChunk,
     DocumentExtractionResult,
     DocumentType,
     DocumentUploadResponse,
@@ -67,8 +69,10 @@ __all__ = [
     "BalanceSheetPeriod",
     "CashFlowMetrics",
     "CashFlowPeriod",
+    "ChunkedDocument",
     "CompanyFundamentals",
     "CompanyProfile",
+    "DocumentChunk",
     "DocumentExtractionResult",
     "DocumentType",
     "DocumentUploadResponse",

@@ -6,6 +6,7 @@ and the public DocumentUploadResponse API schema.
 
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -139,3 +140,54 @@ class ValidatedDocument(BaseModel):
     def get_full_text(self) -> str:
         """Return concatenated text of all usable pages separated by newlines."""
         return "\n\n".join(p.text for p in self.pages if p.is_usable and p.text)
+
+
+class DocumentChunk(BaseModel):
+    """Structured text chunk extracted from a validated document (Phase 9.4)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    chunk_id: str = Field(description="Unique deterministic chunk identifier")
+    document_id: str = Field(description="Source document identifier")
+    ticker: str = Field(description="Associated stock ticker symbol")
+    document_type: DocumentType = Field(description="Category of document")
+    chunk_index: int = Field(ge=1, description="1-indexed sequential chunk position")
+    text: str = Field(description="Extracted chunk text content")
+    character_count: int = Field(ge=1, description="Length of chunk text in characters")
+    word_count: int = Field(ge=1, description="Word count of chunk text")
+    page_numbers: list[int] = Field(
+        description="List of 1-indexed source pages spanning this chunk"
+    )
+    start_page: int = Field(ge=1, description="Initial source page for chunk text")
+    end_page: int = Field(ge=1, description="Ending source page for chunk text")
+    section_name: Optional[str] = Field(
+        default=None,
+        description="Reliable detected section title or heading if present",
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="UTC timestamp of chunk creation",
+    )
+
+
+class ChunkedDocument(BaseModel):
+    """Container holding all chunks generated from a ValidatedDocument."""
+
+    model_config = ConfigDict(frozen=True)
+
+    document_id: str = Field(description="Source document identifier")
+    ticker: str = Field(description="Associated stock ticker symbol")
+    document_type: DocumentType = Field(description="Category of document")
+    total_chunks: int = Field(ge=0, description="Total number of chunks produced")
+    total_characters: int = Field(
+        ge=0, description="Total characters across all chunks"
+    )
+    chunk_size: int = Field(ge=1, description="Configured target chunk size")
+    chunk_overlap: int = Field(ge=0, description="Configured chunk overlap")
+    chunks: list[DocumentChunk] = Field(
+        description="Ordered list of DocumentChunk objects"
+    )
+    chunked_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="UTC timestamp when chunking completed",
+    )
