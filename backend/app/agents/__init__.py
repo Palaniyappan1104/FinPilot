@@ -72,6 +72,20 @@ from app.agents.graph import (
     should_continue_after_clarification,
     should_continue_after_conversation,
 )
+from app.agents.news import (
+    NewsAnalystAgent,
+    news_analyst_node,
+)
+from app.agents.news_schema import (
+    ALLOWED_OVERALL_SENTIMENTS,
+    FactorItem,
+    NewsAnalysisEvent,
+    NewsAnalysisOutput,
+    NewsAnalysisValidationError,
+    NewsAnalystInput,
+    OverallSentimentType,
+    RecentNewsItem,
+)
 from app.agents.specialist_stubs import (
     SPECIALIST_STATE_KEY_MAP,
     create_specialist_stub_node,
@@ -168,4 +182,14 @@ __all__ = [
     "TechnicalIndicatorsSummary",
     "TechnicalInterpretation",
     "technical_analyst_node",
+    "NewsAnalystAgent",
+    "news_analyst_node",
+    "NewsAnalysisOutput",
+    "NewsAnalystInput",
+    "NewsAnalysisValidationError",
+    "FactorItem",
+    "NewsAnalysisEvent",
+    "RecentNewsItem",
+    "OverallSentimentType",
+    "ALLOWED_OVERALL_SENTIMENTS",
 ]
