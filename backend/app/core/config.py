@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # Market Data Providers (Phase 7+)
     MARKET_DATA_PROVIDER: str = "yahoo"
 
+    # News Data Providers (Phase 8+)
+    NEWS_PROVIDER: str = "finnhub"
+
     # Database & Vector Store (Phase 9+ / Phase 14+)
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/finpilot"
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_data"

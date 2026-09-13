@@ -26,6 +26,10 @@ from app.models.market_data import (
     HistoricalMarketData,
     OHLCVCandle,
 )
+from app.models.news import (
+    NewsArticle,
+    NewsSearchResult,
+)
 from app.models.technical_metrics import (
     MACDMetrics,
     MovingAverageMetrics,
@@ -51,6 +55,8 @@ __all__ = [
     "MACDMetrics",
     "MetricSource",
     "MovingAverageMetrics",
+    "NewsArticle",
+    "NewsSearchResult",
     "OHLCVCandle",
     "ProfitabilityMetrics",
     "ProviderRawSnapshot",

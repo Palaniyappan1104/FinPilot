@@ -72,3 +72,48 @@ class MarketDataMalformedError(MarketDataError, ProviderMalformedDataError):
 
 class EmptyMarketDataError(MarketDataError):
     """Raised when provider returns an empty series or zero valid candles."""
+
+
+# ---------------------------------------------------------------------------
+# News Data Domain Exceptions (Phase 8.1)
+# ---------------------------------------------------------------------------
+
+
+class NewsDataError(Exception):
+    """Base exception for all news data provider errors."""
+
+    def __init__(self, message: str, provider: str = "unknown") -> None:
+        super().__init__(message)
+        self.message = message
+        self.provider = provider
+
+    def __str__(self) -> str:
+        return f"[{self.provider}] {self.message}"
+
+
+class NewsProviderNotConfiguredError(NewsDataError):
+    """Raised when the news provider is not configured or missing settings."""
+
+
+class NewsAuthenticationError(NewsDataError):
+    """Raised when news provider authentication fails (e.g. invalid API key)."""
+
+
+class NewsQueryError(NewsDataError):
+    """Raised when news query parameters or date range are invalid."""
+
+
+class NewsProviderUnavailableError(NewsDataError):
+    """Raised when the news provider is unreachable due to network/timeout."""
+
+
+class NewsProviderRateLimitError(NewsDataError):
+    """Raised when the news provider explicitly rejects requests (HTTP 429)."""
+
+
+class NewsMalformedDataError(NewsDataError):
+    """Raised when news provider data is corrupted or violates constraints."""
+
+
+class EmptyNewsDataError(NewsDataError):
+    """Raised when provider returns zero articles for the requested query."""
