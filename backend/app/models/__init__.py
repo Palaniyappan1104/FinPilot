@@ -4,6 +4,11 @@ Structural foundation for domain schemas, request/response models,
 and DB entities (Phase 2+).
 """
 
+from app.models.context import (
+    ContextChunk,
+    ContextConfig,
+    RetrievalContext,
+)
 from app.models.documents import (
     ChunkedDocument,
     ChunkMetadata,
@@ -94,6 +99,8 @@ __all__ = [
     "ChunkedDocument",
     "CompanyFundamentals",
     "CompanyProfile",
+    "ContextChunk",
+    "ContextConfig",
     "DocumentChunk",
     "DocumentEmbeddingBatch",
     "DocumentExtractionResult",
@@ -121,6 +128,7 @@ __all__ = [
     "QueryEmbeddingRequest",
     "QueryEmbeddingResult",
     "RSIMetrics",
+    "RetrievalContext",
     "RevenueHistoryItem",
     "SentimentType",
     "SimilaritySearchResults",
