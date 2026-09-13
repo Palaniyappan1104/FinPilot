@@ -10,6 +10,8 @@ from app.models.documents import (
     DocumentUploadResponse,
     ExtractedPage,
     StoredDocument,
+    ValidatedDocument,
+    ValidatedPage,
 )
 from app.models.financial_data import (
     BalanceSheetPeriod,
@@ -97,5 +99,7 @@ __all__ = [
     "TechnicalScoreBreakdown",
     "TrendDirection",
     "ValuationMetrics",
+    "ValidatedDocument",
+    "ValidatedPage",
     "VolumeMetrics",
 ]

@@ -91,3 +91,51 @@ class DocumentExtractionResult(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="UTC timestamp of extraction completion",
     )
+
+
+class ValidatedPage(BaseModel):
+    """Validated text extracted from a single physical document page."""
+
+    model_config = ConfigDict(frozen=True)
+
+    page_number: int = Field(ge=1, description="1-indexed physical page number")
+    text: str = Field(description="Cleaned extracted text content of page")
+    character_count: int = Field(ge=0, description="Length of page text")
+    word_count: int = Field(ge=0, description="Word count of page text")
+    is_usable: bool = Field(
+        default=True, description="Whether page contains usable text content"
+    )
+
+
+class ValidatedDocument(BaseModel):
+    """Structured result of document text validation (Phase 9.3)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    document_id: str = Field(description="Unique document identifier")
+    ticker: str = Field(description="Associated stock ticker symbol")
+    document_type: DocumentType = Field(description="Category of document")
+    total_pages: int = Field(ge=1, description="Total physical pages in document")
+    usable_pages: int = Field(ge=0, description="Count of pages containing usable text")
+    total_characters: int = Field(
+        ge=0, description="Total characters across usable pages"
+    )
+    total_words: int = Field(ge=0, description="Total words across usable pages")
+    pages: list[ValidatedPage] = Field(
+        description="List of validated page models in sequential order"
+    )
+    validation_status: str = Field(
+        default="valid", description="Lifecycle validation status"
+    )
+    validated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="UTC timestamp of validation completion",
+    )
+
+    def get_usable_pages(self) -> list[ValidatedPage]:
+        """Return only pages flagged as containing usable text."""
+        return [p for p in self.pages if p.is_usable]
+
+    def get_full_text(self) -> str:
+        """Return concatenated text of all usable pages separated by newlines."""
+        return "\n\n".join(p.text for p in self.pages if p.is_usable and p.text)
