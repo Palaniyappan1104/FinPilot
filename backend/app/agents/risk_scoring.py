@@ -14,6 +14,7 @@ Principles enforced:
   manufacture a score when quantitative evidence is absent.
 """
 
+import math
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -91,10 +92,10 @@ def score_rsi(rsi: Optional[float]) -> Optional[float]:
     Returns:
         Optional[float]: Risk score in [0.0, 1.0], or None if RSI is not provided.
     """
-    if rsi is None:
+    if rsi is None or not isinstance(rsi, (int, float)):
         return None
 
-    if rsi < 0.0 or rsi > 100.0:
+    if math.isnan(rsi) or math.isinf(rsi) or rsi < 0.0 or rsi > 100.0:
         return None
 
     if 40.0 <= rsi <= 60.0:
@@ -120,10 +121,15 @@ def score_technical_score(technical_score: Optional[float]) -> Optional[float]:
     Returns:
         Optional[float]: Risk score in [0.0, 1.0], or None if score is not provided.
     """
-    if technical_score is None:
+    if technical_score is None or not isinstance(technical_score, (int, float)):
         return None
 
-    if technical_score < 0.0 or technical_score > 100.0:
+    if (
+        math.isnan(technical_score)
+        or math.isinf(technical_score)
+        or technical_score < 0.0
+        or technical_score > 100.0
+    ):
         return None
 
     return round((100.0 - technical_score) / 100.0, 3)
@@ -142,7 +148,12 @@ def calculate_investor_multiplier(
     Returns:
         float: Multiplier (defaults to 1.0 if no profile or no base score).
     """
-    if not input_data.investor_profile or base_score is None:
+    if (
+        not input_data.investor_profile
+        or base_score is None
+        or math.isnan(base_score)
+        or math.isinf(base_score)
+    ):
         return 1.0
 
     prof = input_data.investor_profile

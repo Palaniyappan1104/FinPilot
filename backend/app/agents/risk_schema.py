@@ -12,6 +12,7 @@ Phase 10.1 defines:
 - Typed exception `RiskAnalysisValidationError`.
 """
 
+import math
 import re
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -223,6 +224,8 @@ class RiskInvestorProfile(BaseModel):
         if capital is not None:
             try:
                 capital = float(capital)
+                if capital < 0.0 or math.isnan(capital) or math.isinf(capital):
+                    capital = None
             except (ValueError, TypeError):
                 capital = None
 
