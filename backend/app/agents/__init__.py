@@ -122,6 +122,14 @@ from app.agents.news_schema import (
     OverallSentimentType,
     RecentNewsItem,
 )
+from app.agents.report_consistency import (
+    ReportConsistencyValidator,
+    ReportValidationIssue,
+    ReportValidationResult,
+    ReportValidationSeverity,
+    ReportValidationStatus,
+    validate_final_report,
+)
 from app.agents.report_generator import (
     GeneratedReportSynthesis,
     ReportGeneratorAgent,
@@ -387,4 +395,10 @@ __all__ = [
     "generate_deterministic_report",
     "ReportGeneratorAgent",
     "report_generator_node",
+    "ReportValidationStatus",
+    "ReportValidationSeverity",
+    "ReportValidationIssue",
+    "ReportValidationResult",
+    "ReportConsistencyValidator",
+    "validate_final_report",
 ]
