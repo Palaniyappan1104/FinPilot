@@ -70,10 +70,14 @@ CORE_SPECIALISTS: List[SpecialistType] = [
 # Prohibited advisory patterns strictly disallowed in aggregator schemas
 PROHIBITED_ADVICE_PATTERNS: List[re.Pattern] = [
     re.compile(r"\b(?:buy|sell|strong\s+buy|strong\s+sell)\s+recommendation\b", re.I),
+    re.compile(
+        r"\brecommend(?:s|ed|ing)?\s+(?:to\s+)?(?:buy(?:ing)?|sell(?:ing)?|hold(?:ing)?)\b",
+        re.I,
+    ),
     re.compile(r"\b(?:target\s+price|price\s+target)\b", re.I),
     re.compile(r"\bguaranteed\s+(?:return|profit|gain)s?\b", re.I),
     re.compile(r"\brisk[- ]free\b", re.I),
-    re.compile(r"\b(?:investors?\s+must|you\s+should)\s+(?:buy|sell)\b", re.I),
+    re.compile(r"\b(?:investors?\s+must|you\s+should)\s+(?:buy|sell|hold)\b", re.I),
 ]
 
 
@@ -310,6 +314,123 @@ class CrossSpecialistObservation(BaseModel):
     )
 
     @field_validator("observation")
+    @classmethod
+    def validate_non_empty(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("Field cannot be empty or whitespace.")
+        return cleaned
+
+
+# ===========================================================================
+# CONSISTENCY VALIDATION SCHEMAS (Phase 11.3)
+# ===========================================================================
+
+
+class ConsistencyCheckStatus(str, Enum):
+    """Evaluation status of an individual consistency check."""
+
+    PASSED = "passed"
+    WARNING = "warning"
+    FAILED = "failed"
+
+
+class ConsistencyCheckSeverity(str, Enum):
+    """Severity of a detected consistency condition."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class ConsistencyIssue(BaseModel):
+    """An individual consistency check result or detected issue."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    check_id: str = Field(
+        ...,
+        description="Unique check identifier, e.g. 'CHK_ATTR_SPECIALIST_EXISTS'.",
+    )
+    status: ConsistencyCheckStatus = Field(
+        ...,
+        description="Outcome of check: passed, warning, or failed.",
+    )
+    severity: ConsistencyCheckSeverity = Field(
+        ...,
+        description="Severity level of the issue.",
+    )
+    affected_specialists: List[str] = Field(
+        default_factory=list,
+        description="Specialist identifiers associated with this issue.",
+    )
+    affected_evidence_refs: List[str] = Field(
+        default_factory=list,
+        description="Evidence reference IDs associated with this issue.",
+    )
+    message: str = Field(
+        ...,
+        description="Concise description of the condition found.",
+    )
+    explanation: str = Field(
+        ...,
+        description=(
+            "Detailed explanation covering what was checked, expected, and found."
+        ),
+    )
+
+    @field_validator("check_id", "message", "explanation")
+    @classmethod
+    def validate_non_empty(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("Field cannot be empty or whitespace.")
+        return cleaned
+
+
+class AggregationConsistencyReport(BaseModel):
+    """Structured consistency validation report for Report Aggregator (Phase 11.3)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    ticker: str = Field(
+        ...,
+        description="Uppercase ticker symbol for the target company.",
+    )
+    is_valid: bool = Field(
+        ...,
+        description="True if no checks failed with high or critical severity.",
+    )
+    passed_checks_count: int = Field(
+        default=0,
+        ge=0,
+        description="Count of checks that passed.",
+    )
+    warnings_count: int = Field(
+        default=0,
+        ge=0,
+        description="Count of checks resulting in warnings.",
+    )
+    failures_count: int = Field(
+        default=0,
+        ge=0,
+        description="Count of checks that failed.",
+    )
+    issues: List[ConsistencyIssue] = Field(
+        default_factory=list,
+        description="List of all evaluated check issues and passes.",
+    )
+    summary: str = Field(
+        ...,
+        description="Executive summary of the consistency validation results.",
+    )
+    insufficient_evidence: bool = Field(
+        default=False,
+        description="True if input had zero or insufficient specialist data.",
+    )
+
+    @field_validator("ticker", "summary")
     @classmethod
     def validate_non_empty(cls, v: str) -> str:
         cleaned = v.strip()
@@ -1043,6 +1164,12 @@ class UnifiedSpecialistAnalysis(BaseModel):
     specialist_errors: Dict[SpecialistType, str] = Field(
         default_factory=dict,
         description="Error messages for failed specialists.",
+    )
+
+    # Consistency Validation (Phase 11.3)
+    consistency_report: Optional[AggregationConsistencyReport] = Field(
+        default=None,
+        description="Structured consistency validation report from Phase 11.3.",
     )
 
     @field_validator("ticker")

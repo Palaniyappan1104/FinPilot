@@ -13,6 +13,7 @@ Fulfills Phase 11.2 requirements:
 
 from typing import Any, Dict, List, Optional, Union
 
+from app.agents.aggregator_consistency import validate_aggregation_consistency
 from app.agents.aggregator_prompt import format_aggregator_prompt
 from app.agents.aggregator_schema import (
     PROHIBITED_ADVICE_PATTERNS,
@@ -594,6 +595,9 @@ class ReportAggregatorAgent(BaseAgent):
                 "complete absence of specialist analysis data."
             )
             analysis.confidence = 0.0
+            analysis.consistency_report = validate_aggregation_consistency(
+                parsed_input, analysis
+            )
             return AgentResult.create_success(data=analysis, confidence=0.0)
 
         # 4. Deterministic Cross-Referencing Detectors
@@ -695,6 +699,14 @@ class ReportAggregatorAgent(BaseAgent):
         except ReportAggregatorValidationError as val_err:
             logger.error("Validation error in aggregator synthesis: %s", val_err)
             return AgentResult.create_failure(error=str(val_err))
+
+        # 8. Consistency Validation (Phase 11.3)
+        try:
+            analysis.consistency_report = validate_aggregation_consistency(
+                parsed_input, analysis
+            )
+        except Exception as c_err:
+            logger.warning("Consistency validation encountered error: %s", c_err)
 
         return AgentResult.create_success(
             data=analysis,

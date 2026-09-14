@@ -16,6 +16,10 @@ from app.agents.aggregator import (
     generate_deterministic_synthesis,
     report_aggregator_node,
 )
+from app.agents.aggregator_consistency import (
+    AggregationConsistencyChecker,
+    validate_aggregation_consistency,
+)
 from app.agents.aggregator_prompt import (
     AGGREGATOR_SYSTEM_PROMPT,
     format_aggregator_prompt,
@@ -23,8 +27,12 @@ from app.agents.aggregator_prompt import (
 from app.agents.aggregator_schema import (
     ALL_SPECIALISTS,
     AggregatedEvidenceItem,
+    AggregationConsistencyReport,
     AggregatorInvestorProfile,
     AggregatorSynthesisOutput,
+    ConsistencyCheckSeverity,
+    ConsistencyCheckStatus,
+    ConsistencyIssue,
     CrossSpecialistObservation,
     ReportAggregatorError,
     ReportAggregatorInput,
@@ -313,6 +321,12 @@ __all__ = [
     "SignalConflict",
     "CrossSpecialistObservation",
     "AggregatorSynthesisOutput",
+    "ConsistencyCheckStatus",
+    "ConsistencyCheckSeverity",
+    "ConsistencyIssue",
+    "AggregationConsistencyReport",
+    "AggregationConsistencyChecker",
+    "validate_aggregation_consistency",
     "ReportAggregatorAgent",
     "report_aggregator_node",
     "detect_signal_conflicts",
