@@ -24,6 +24,7 @@ Key Architecture:
 """
 
 import math
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -670,6 +671,10 @@ class FinalReport(BaseModel):
         default=False,
         description="True if report was generated under insufficient evidence.",
     )
+    generated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Timestamp when report was generated.",
+    )
 
     # -----------------------------------------------------------------------
     # CONVENIENCE ALIAS PROPERTIES
@@ -783,6 +788,42 @@ class FinalReport(BaseModel):
                     )
 
         return self
+
+    # -----------------------------------------------------------------------
+    # OUTPUT FORMATTING & RENDERING (Phase 12.4)
+    # -----------------------------------------------------------------------
+
+    def to_markdown(
+        self,
+        include_disclaimer: bool = True,
+        include_table_of_contents: bool = False,
+    ) -> str:
+        """Render report as formatted Markdown (Phase 12.4.2)."""
+        from app.agents.report_formatter import format_report_markdown
+
+        return format_report_markdown(
+            self,
+            include_disclaimer=include_disclaimer,
+            include_table_of_contents=include_table_of_contents,
+        )
+
+    def to_text(self, include_disclaimer: bool = True) -> str:
+        """Render report as plain text (Phase 12.4.2)."""
+        from app.agents.report_formatter import format_report_text
+
+        return format_report_text(self, include_disclaimer=include_disclaimer)
+
+    def to_frontend_dict(self) -> Dict[str, Any]:
+        """Format report into structured dictionary for frontend UI (Phase 12.4.1)."""
+        from app.agents.report_formatter import format_report_frontend_dict
+
+        return format_report_frontend_dict(self)
+
+    def to_frontend_json(self, indent: Optional[int] = 2) -> str:
+        """Serialize report to frontend UI JSON string (Phase 12.4.1)."""
+        from app.agents.report_formatter import format_report_frontend_json
+
+        return format_report_frontend_json(self, indent=indent)
 
     # -----------------------------------------------------------------------
     # FACTORY CONSTRUCTOR FROM PHASE 11 AGGREGATOR

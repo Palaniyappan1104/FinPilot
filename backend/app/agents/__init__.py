@@ -130,6 +130,13 @@ from app.agents.report_consistency import (
     ReportValidationStatus,
     validate_final_report,
 )
+from app.agents.report_formatter import (
+    format_report_frontend_dict,
+    format_report_frontend_json,
+    format_report_json,
+    format_report_markdown,
+    format_report_text,
+)
 from app.agents.report_generator import (
     GeneratedReportSynthesis,
     ReportGeneratorAgent,
@@ -401,4 +408,9 @@ __all__ = [
     "ReportValidationResult",
     "ReportConsistencyValidator",
     "validate_final_report",
+    "format_report_markdown",
+    "format_report_text",
+    "format_report_json",
+    "format_report_frontend_dict",
+    "format_report_frontend_json",
 ]
