@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1 import api_router
-from app.api.v1.health import get_health
+from app.api.v1.health import HealthResponse, get_health
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.core.middleware import RequestLoggingMiddleware
@@ -28,6 +28,47 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down FinPilot backend service...")
 
 
+API_DESCRIPTION = """
+FinPilot is an autonomous multi-agent financial research and equity analysis engine.
+
+### Core Capabilities:
+- **Autonomous Multi-Agent Analysis**: Orchestrates LangGraph specialized agents.
+- **Conversational Workflows**: Proactively identifies underspecified financial goals.
+- **Synchronous & Asynchronous Execution**: Real-time or background execution.
+- **Status & Progress Tracking**: Real-time lifecycle polling for active analyses.
+- **Document-Grounded Research**: Upload and query corporate filings and SEC docs.
+- **Multi-Format Report Delivery**: Structured JSON, Markdown, and Summaries.
+- **Safe Error Envelopes**: Structured error responses without leaking internals.
+"""
+
+TAGS_METADATA = [
+    {
+        "name": "analysis",
+        "description": (
+            "Multi-agent equity analysis, conversational queries, "
+            "clarification workflows, and in-progress status tracking."
+        ),
+    },
+    {
+        "name": "reports",
+        "description": (
+            "Retrieval and multi-format rendering (JSON, Markdown, Executive Summary) "
+            "of completed investment research reports."
+        ),
+    },
+    {
+        "name": "documents",
+        "description": (
+            "Document upload and research vault storage for corporate filings."
+        ),
+    },
+    {
+        "name": "health",
+        "description": "Service health, versioning, and environment diagnostics.",
+    },
+]
+
+
 def create_application() -> FastAPI:
     """Application factory for FinPilot backend."""
     settings = get_settings()
@@ -35,6 +76,11 @@ def create_application() -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
+        description=API_DESCRIPTION.strip(),
+        openapi_tags=TAGS_METADATA,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
         debug=settings.DEBUG,
         lifespan=lifespan,
     )
@@ -134,7 +180,18 @@ def create_application() -> FastAPI:
         )
 
     # Top-level GET /health
-    app.add_api_route("/health", get_health, methods=["GET"], tags=["health"])
+    app.add_api_route(
+        "/health",
+        get_health,
+        methods=["GET"],
+        response_model=HealthResponse,
+        tags=["health"],
+        summary="Top-level service health check",
+        description=(
+            "Top-level health check probe for load balancers and orchestrators."
+        ),
+        operation_id="getHealthRoot",
+    )
 
     # API v1 routes
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)

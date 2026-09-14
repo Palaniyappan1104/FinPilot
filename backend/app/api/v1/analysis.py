@@ -273,6 +273,7 @@ def _extract_response_from_state(
         422: ERROR_422_RESPONSE,
         500: ERROR_500_RESPONSE,
     },
+    operation_id="submitChatQuery",
 )
 async def chat_query(
     request: ChatQueryRequest,
@@ -373,6 +374,7 @@ async def chat_query(
         422: ERROR_422_RESPONSE,
         500: ERROR_500_RESPONSE,
     },
+    operation_id="triggerCompanyAnalysis",
 )
 async def company_analysis(
     request: CompanyAnalysisRequest,
@@ -495,6 +497,7 @@ async def company_analysis(
         422: ERROR_422_RESPONSE,
         500: ERROR_500_RESPONSE,
     },
+    operation_id="submitClarificationAnswers",
 )
 async def submit_clarification(
     request: ClarificationSubmitRequest,
@@ -610,6 +613,7 @@ async def submit_clarification(
         422: ERROR_422_RESPONSE,
         500: ERROR_500_RESPONSE,
     },
+    operation_id="queryDocumentResearch",
 )
 async def research_query(
     request: ResearchQueryRequest,
@@ -715,6 +719,7 @@ async def research_query(
         422: ERROR_422_RESPONSE,
         500: ERROR_500_RESPONSE,
     },
+    operation_id="getAnalysisStatus",
 )
 async def get_analysis_status(
     analysis_id: str,
@@ -757,12 +762,14 @@ async def get_analysis_status(
         "Retrieves a completed report by ID. Supports 'format=json' (default), "
         "'format=markdown', and 'format=summary'."
     ),
+    tags=["reports"],
     responses={
         400: ERROR_400_RESPONSE,
         404: ERROR_404_RESPONSE,
         422: ERROR_422_RESPONSE,
         500: ERROR_500_RESPONSE,
     },
+    operation_id="getCompletedReport",
 )
 async def get_report(
     report_id: str,

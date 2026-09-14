@@ -19,7 +19,13 @@ class HealthResponse(BaseModel):
     environment: str
 
 
-@router.get("", response_model=HealthResponse)
+@router.get(
+    "",
+    response_model=HealthResponse,
+    summary="Get API v1 health status",
+    description="Return application service health, version, and environment status.",
+    operation_id="getHealthV1",
+)
 def get_health() -> Dict[str, str]:
     """Return application health status."""
     settings = get_settings()

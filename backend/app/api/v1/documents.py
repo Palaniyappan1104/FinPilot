@@ -39,6 +39,7 @@ def get_document_storage() -> DocumentStorage:
         "Upload a financial research document (e.g. 10-K, 10-Q, earnings transcript, "
         "investor presentation) associated with a stock ticker."
     ),
+    operation_id="uploadResearchDocument",
 )
 @router.post(
     "",
