@@ -1121,7 +1121,17 @@ class ReportGeneratorInput(BaseModel):
         if isinstance(agg_raw, UnifiedSpecialistAnalysis):
             analysis = agg_raw
         elif isinstance(agg_raw, dict):
-            analysis = UnifiedSpecialistAnalysis.model_validate(agg_raw)
+            # Check if wrapped in AgentResult format: {"success": True, "data": {...}}
+            if "data" in agg_raw and isinstance(
+                agg_raw["data"], (dict, UnifiedSpecialistAnalysis)
+            ):
+                payload = agg_raw["data"]
+                if isinstance(payload, UnifiedSpecialistAnalysis):
+                    analysis = payload
+                else:
+                    analysis = UnifiedSpecialistAnalysis.model_validate(payload)
+            else:
+                analysis = UnifiedSpecialistAnalysis.model_validate(agg_raw)
         else:
             raise TypeError(
                 f"Unsupported aggregated_result type: {type(agg_raw)}. "

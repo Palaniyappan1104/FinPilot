@@ -122,6 +122,17 @@ from app.agents.news_schema import (
     OverallSentimentType,
     RecentNewsItem,
 )
+from app.agents.report_generator import (
+    GeneratedReportSynthesis,
+    ReportGeneratorAgent,
+    generate_deterministic_report,
+    report_generator_node,
+    validate_report_grounding,
+)
+from app.agents.report_prompt import (
+    REPORT_GENERATOR_SYSTEM_PROMPT,
+    format_report_generator_prompt,
+)
 from app.agents.report_schema import (
     STANDARD_DISCLAIMER,
     FinalReport,
@@ -369,4 +380,11 @@ __all__ = [
     "FinalReport",
     "InvestmentReport",
     "ReportGeneratorInput",
+    "REPORT_GENERATOR_SYSTEM_PROMPT",
+    "format_report_generator_prompt",
+    "GeneratedReportSynthesis",
+    "validate_report_grounding",
+    "generate_deterministic_report",
+    "ReportGeneratorAgent",
+    "report_generator_node",
 ]
