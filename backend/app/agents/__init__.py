@@ -8,16 +8,32 @@ Phase 3.2 implements the Conversation Agent.
 Phase 3.3 implements the Clarification Agent and completeness evaluation.
 """
 
+from app.agents.aggregator import (
+    ReportAggregatorAgent,
+    detect_cross_observations,
+    detect_signal_conflicts,
+    detect_synthesis_agreements,
+    generate_deterministic_synthesis,
+    report_aggregator_node,
+)
+from app.agents.aggregator_prompt import (
+    AGGREGATOR_SYSTEM_PROMPT,
+    format_aggregator_prompt,
+)
 from app.agents.aggregator_schema import (
     ALL_SPECIALISTS,
     AggregatedEvidenceItem,
     AggregatorInvestorProfile,
+    AggregatorSynthesisOutput,
+    CrossSpecialistObservation,
     ReportAggregatorError,
     ReportAggregatorInput,
     ReportAggregatorValidationError,
+    SignalConflict,
     SpecialistEntry,
     SpecialistStatus,
     SpecialistType,
+    SynthesisFinding,
     UnifiedSpecialistAnalysis,
 )
 from app.agents.base import (
@@ -293,4 +309,16 @@ __all__ = [
     "UnifiedSpecialistAnalysis",
     "ReportAggregatorError",
     "ReportAggregatorValidationError",
+    "SynthesisFinding",
+    "SignalConflict",
+    "CrossSpecialistObservation",
+    "AggregatorSynthesisOutput",
+    "ReportAggregatorAgent",
+    "report_aggregator_node",
+    "detect_signal_conflicts",
+    "detect_synthesis_agreements",
+    "detect_cross_observations",
+    "generate_deterministic_synthesis",
+    "AGGREGATOR_SYSTEM_PROMPT",
+    "format_aggregator_prompt",
 ]

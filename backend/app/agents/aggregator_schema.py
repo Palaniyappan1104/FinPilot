@@ -214,6 +214,111 @@ class AggregatedEvidenceItem(BaseModel):
 
 
 # ===========================================================================
+# SYNTHESIS, AGREEMENT & CONFLICT MODELS (Phase 11.2)
+# ===========================================================================
+
+
+class SynthesisFinding(BaseModel):
+    """An area of consensus or agreement supported by multiple specialists."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    topic: str = Field(
+        ...,
+        description="Concise topic of agreement (e.g., 'Cash Flow Strength').",
+    )
+    summary: str = Field(
+        ...,
+        description="Synthesized description grounded strictly in evidence.",
+    )
+    supporting_specialists: List[SpecialistType] = Field(
+        ...,
+        min_length=1,
+        description="Specialist agents whose findings support this agreement.",
+    )
+    evidence: List[AggregatedEvidenceItem] = Field(
+        default_factory=list,
+        description="Specific attributed evidence items supporting this finding.",
+    )
+
+    @field_validator("topic", "summary")
+    @classmethod
+    def validate_non_empty(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("Field cannot be empty or whitespace.")
+        return cleaned
+
+
+class SignalConflict(BaseModel):
+    """An identified tension or contradiction between two or more specialists."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    topic: str = Field(
+        ...,
+        description=(
+            "Nature of tension (e.g., 'Technical Strength vs Fundamental Weakness')."
+        ),
+    )
+    description: str = Field(
+        ...,
+        description=(
+            "Objective explanation of the conflict without artificial consensus."
+        ),
+    )
+    specialist_positions: Dict[str, str] = Field(
+        ...,
+        description="Position/finding of each conflicting specialist.",
+    )
+    involved_specialists: List[SpecialistType] = Field(
+        ...,
+        min_length=2,
+        description="At least two specialists exhibiting conflicting signals.",
+    )
+    evidence: List[AggregatedEvidenceItem] = Field(
+        default_factory=list,
+        description="Attributed evidence items illustrating the conflict.",
+    )
+
+    @field_validator("topic", "description")
+    @classmethod
+    def validate_non_empty(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("Field cannot be empty or whitespace.")
+        return cleaned
+
+
+class CrossSpecialistObservation(BaseModel):
+    """A cross-specialist insight connecting signals across distinct domains."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    observation: str = Field(
+        ...,
+        description="Factual cross-domain observation connecting specialist signals.",
+    )
+    connected_specialists: List[SpecialistType] = Field(
+        ...,
+        min_length=1,
+        description="Specialists contributing to this cross-domain connection.",
+    )
+    evidence: List[AggregatedEvidenceItem] = Field(
+        default_factory=list,
+        description="Attributed evidence items substantiating the observation.",
+    )
+
+    @field_validator("observation")
+    @classmethod
+    def validate_non_empty(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("Field cannot be empty or whitespace.")
+        return cleaned
+
+
+# ===========================================================================
 # SPECIALIST STATUS & PAYLOAD CONTAINERS (11.1.1 & 11.1.2)
 # ===========================================================================
 
@@ -889,6 +994,43 @@ class UnifiedSpecialistAnalysis(BaseModel):
         description="All extracted specialist evidence items preserving provenance.",
     )
 
+    # Cross-Specialist Synthesis & Alignment (Phase 11.2)
+    areas_of_agreement: List[SynthesisFinding] = Field(
+        default_factory=list,
+        description="Key findings corroborated across multiple specialists.",
+    )
+    signal_conflicts: List[SignalConflict] = Field(
+        default_factory=list,
+        description="Identified contradictions or tensions between specialists.",
+    )
+    cross_specialist_observations: List[CrossSpecialistObservation] = Field(
+        default_factory=list,
+        description="Factual cross-domain insights synthesized from specialist data.",
+    )
+    overall_synthesis: str = Field(
+        default="",
+        description=(
+            "Unified analytical synthesis grounded strictly in supplied evidence."
+        ),
+    )
+    confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Overall synthesis confidence reflecting data completeness and "
+            "consistency."
+        ),
+    )
+    insufficient_evidence: bool = Field(
+        default=False,
+        description="True if specialist evidence was insufficient for synthesis.",
+    )
+    insufficient_evidence_reason: Optional[str] = Field(
+        default=None,
+        description="Detailed explanation if insufficient_evidence is True.",
+    )
+
     # Metadata & Error Records
     missing_specialists: List[SpecialistType] = Field(
         default_factory=list,
@@ -910,6 +1052,18 @@ class UnifiedSpecialistAnalysis(BaseModel):
         if not cleaned:
             raise ValueError("Ticker symbol cannot be empty or whitespace.")
         return cleaned
+
+    @field_validator("overall_synthesis")
+    @classmethod
+    def validate_safety_boundaries(cls, v: str) -> str:
+        """Enforce strict prohibition on buy/sell advice and price targets."""
+        for pattern in PROHIBITED_ADVICE_PATTERNS:
+            if pattern.search(v):
+                raise ReportAggregatorValidationError(
+                    "Unified synthesis contains prohibited advisory phrase matching "
+                    f"'{pattern.pattern}'. FinPilot provides decision support only."
+                )
+        return v
 
     @classmethod
     def from_input(
@@ -942,3 +1096,53 @@ class UnifiedSpecialistAnalysis(BaseModel):
             failed_specialists=agg_input.failed_specialists,
             specialist_errors=dict(agg_input.specialist_errors),
         )
+
+
+class AggregatorSynthesisOutput(BaseModel):
+    """Structured LLM synthesis payload for Report Aggregator (Phase 11.2)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    areas_of_agreement: List[SynthesisFinding] = Field(
+        default_factory=list,
+        description="Key findings corroborated across multiple specialists.",
+    )
+    signal_conflicts: List[SignalConflict] = Field(
+        default_factory=list,
+        description="Identified contradictions or tensions between specialists.",
+    )
+    cross_specialist_observations: List[CrossSpecialistObservation] = Field(
+        default_factory=list,
+        description="Factual cross-domain insights connecting specialist findings.",
+    )
+    overall_synthesis: str = Field(
+        ...,
+        description=(
+            "Unified analytical synthesis grounded strictly in supplied evidence."
+        ),
+    )
+    confidence: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=1.0,
+        description="Confidence reflecting signal completeness and consistency.",
+    )
+    insufficient_evidence: bool = Field(
+        default=False,
+        description="True if specialist evidence was insufficient for synthesis.",
+    )
+    insufficient_evidence_reason: Optional[str] = Field(
+        default=None,
+        description="Detailed reason if insufficient_evidence is True.",
+    )
+
+    @field_validator("overall_synthesis")
+    @classmethod
+    def validate_safety(cls, v: str) -> str:
+        for pattern in PROHIBITED_ADVICE_PATTERNS:
+            if pattern.search(v):
+                raise ReportAggregatorValidationError(
+                    "Synthesis contains prohibited advisory phrase matching "
+                    f"'{pattern.pattern}'."
+                )
+        return v
