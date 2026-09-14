@@ -12,6 +12,10 @@ from typing import Any, Callable, Dict, List, Optional
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from app.agents.aggregator import (
+    ReportAggregatorAgent,
+    report_aggregator_node,
+)
 from app.agents.cio import CIOAgent
 from app.agents.cio_schema import (
     CIORoutingDecision,
@@ -24,11 +28,35 @@ from app.agents.clarification_schema import (
 )
 from app.agents.conversation import ConversationAgent
 from app.agents.conversation_schema import ConversationOutput
+from app.agents.fundamental import (
+    FundamentalAnalystAgent,
+    fundamental_analyst_node,
+)
+from app.agents.news import (
+    NewsAnalystAgent,
+    news_analyst_node,
+)
+from app.agents.report_generator import (
+    ReportGeneratorAgent,
+    report_generator_node,
+)
+from app.agents.research import (
+    ResearchAnalystAgent,
+    research_analyst_node,
+)
+from app.agents.risk import (
+    RiskAnalystAgent,
+    risk_analyst_node,
+)
 from app.agents.specialist_stubs import create_specialist_stub_node
 from app.agents.state import (
     GraphState,
     InvestorProfile,
     create_initial_state,
+)
+from app.agents.technical import (
+    TechnicalAnalystAgent,
+    technical_analyst_node,
 )
 from app.core.logging import get_logger
 
@@ -39,6 +67,8 @@ CONVERSATION_NODE_NAME = "conversation"
 CLARIFICATION_NODE_NAME = "clarification"
 CIO_NODE_NAME = "cio"
 FAN_IN_NODE_NAME = "fan_in"
+AGGREGATOR_NODE_NAME = "aggregator"
+REPORT_GENERATOR_NODE_NAME = "report_generator"
 
 ROUTE_CLARIFICATION_REQUIRED = "clarification_required"
 ROUTE_READY_FOR_ANALYSIS = "ready_for_analysis"
@@ -175,7 +205,13 @@ def clarification_node(
         )
         return {}
 
-    existing_profile = state.get("investor_profile")
+    existing_profile = dict(state.get("investor_profile") or {})
+    clarification_answers = state.get("clarification_answers")
+    if clarification_answers and isinstance(clarification_answers, dict):
+        for k, v in clarification_answers.items():
+            if v is not None:
+                existing_profile[k] = v
+
     entities = clarified_req.get("entities") or {}
 
     conv_out = ConversationOutput(
@@ -191,7 +227,7 @@ def clarification_node(
 
     clar_input = ClarificationInput(
         conversation_output=conv_out,
-        existing_profile=existing_profile,
+        existing_profile=existing_profile if existing_profile else None,
     )
 
     res = active_agent.run(clar_input)
@@ -408,6 +444,14 @@ def route_to_specialists(state: GraphState) -> List[str]:
     valid_specialist_names = {s.value for s in SpecialistName}
     matched = [s for s in selected if s in valid_specialist_names]
 
+    # Conditional Research Inclusion (plan.md 13.2.3):
+    # Research analyst is included only if documents are available in Research Vault.
+    if "research" in matched and not state.get("documents_available", False):
+        logger.info(
+            "Research specialist omitted from routing: documents_available is False."
+        )
+        matched = [s for s in matched if s != "research"]
+
     if not matched:
         logger.warning(
             "No valid specialists found in CIO decision; routing directly to fan_in."
@@ -599,3 +643,356 @@ def run_orchestration_graph(
     )
     result: GraphState = graph.invoke(initial_state)
     return result
+
+
+# ---------------------------------------------------------------------------
+# 6. Phase 13 End-to-End LangGraph Integration (plan.md Phase 13)
+# ---------------------------------------------------------------------------
+
+
+def _create_safe_specialist_node(
+    specialist_name: str,
+    node_fn: Callable[[GraphState], Dict[str, Any]],
+) -> Callable[[GraphState], Dict[str, Any]]:
+    """Wrap specialist node to enforce failure isolation and structured logging.
+
+    Prevents any single specialist failure from halting the workflow (plan.md 13.3.1).
+    Logs structured trace information per request (plan.md 13.3.3).
+    """
+
+    def _safe_node(state: GraphState) -> Dict[str, Any]:
+        trace_id = state.get("trace_id") or "trace-default"
+        logger.info("[%s] Executing specialist: %s", trace_id, specialist_name)
+        try:
+            result = node_fn(state)
+            status_val = "completed"
+            if isinstance(result, dict):
+                spec_res = result.get(f"{specialist_name}_result")
+                if isinstance(spec_res, dict):
+                    status_val = spec_res.get("status", "completed")
+            logger.info(
+                "[%s] Completed specialist: %s, status=%s",
+                trace_id,
+                specialist_name,
+                status_val,
+            )
+            return result
+        except Exception as err:
+            logger.error(
+                "[%s] Specialist %s encountered unhandled error: %s",
+                trace_id,
+                specialist_name,
+                err,
+                exc_info=True,
+            )
+            return {
+                f"{specialist_name}_result": {
+                    "specialist": specialist_name,
+                    "status": "failed",
+                    "success": False,
+                    "error": f"Unhandled error in {specialist_name} node: {err}",
+                }
+            }
+
+    return _safe_node
+
+
+def create_end_to_end_graph(
+    conversation_agent: Optional[ConversationAgent] = None,
+    clarification_agent: Optional[ClarificationAgent] = None,
+    cio_agent: Optional[CIOAgent] = None,
+    technical_agent: Optional[TechnicalAnalystAgent] = None,
+    fundamental_agent: Optional[FundamentalAnalystAgent] = None,
+    news_agent: Optional[NewsAnalystAgent] = None,
+    research_agent: Optional[ResearchAnalystAgent] = None,
+    risk_agent: Optional[RiskAnalystAgent] = None,
+    aggregator_agent: Optional[ReportAggregatorAgent] = None,
+    report_generator_agent: Optional[ReportGeneratorAgent] = None,
+    specialist_overrides: Optional[
+        Dict[str, Callable[[GraphState], Dict[str, Any]]]
+    ] = None,
+    specialist_timeout_seconds: Optional[float] = 30.0,
+) -> CompiledStateGraph:
+    """Build and compile the Phase 13 End-to-End FinPilot LangGraph workflow.
+
+    Workflow topology (plan.md Phase 13.1 & 13.2):
+        START
+          ↓
+        conversation_node
+          ↓ (should_continue_after_conversation)
+          ├── error → END
+          └── continue → clarification_node
+                            ↓ (should_continue_after_clarification)
+                            ├── clarification_required → END
+                            └── ready_for_analysis → cio_node
+                                                       ↓ (route_to_specialists)
+                                                       ├── technical   ─┐
+                                                       ├── fundamental  ┼
+                                                       ├── news ────────┼─> fan_in
+                                                       ├── research ────┤     ↓
+                                                       └── risk ────────┘ aggregator
+                                                                              ↓
+                                                                       report_generator
+                                                                              ↓
+                                                                             END
+
+    Guarantees:
+    - State schema integrity without leakage or clobbering (13.1.2)
+    - Dynamic specialist fan-out (13.2.2)
+    - Research analyst conditionally included when documents available (13.2.3)
+    - Specialist failure isolation: single failures never abort the workflow (13.3.1)
+    - Structured logging with trace correlation (13.3.3)
+    - Full FinalReport output at END (13.1.1)
+
+    Args:
+        conversation_agent: Optional ConversationAgent instance.
+        clarification_agent: Optional ClarificationAgent instance.
+        cio_agent: Optional CIOAgent instance.
+        technical_agent: Optional TechnicalAnalystAgent instance.
+        fundamental_agent: Optional FundamentalAnalystAgent instance.
+        news_agent: Optional NewsAnalystAgent instance.
+        research_agent: Optional ResearchAnalystAgent instance.
+        risk_agent: Optional RiskAnalystAgent instance.
+        aggregator_agent: Optional ReportAggregatorAgent instance.
+        report_generator_agent: Optional ReportGeneratorAgent instance.
+        specialist_overrides: Optional custom specialist handlers keyed by name.
+        specialist_timeout_seconds: Specialist timeout in seconds.
+
+    Returns:
+        CompiledStateGraph: The compiled end-to-end LangGraph instance.
+    """
+    conv_agent = conversation_agent or ConversationAgent()
+    clar_agent = clarification_agent or ClarificationAgent()
+    active_cio = cio_agent or CIOAgent()
+    tech_agent = technical_agent or TechnicalAnalystAgent()
+    fund_agent = fundamental_agent or FundamentalAnalystAgent()
+    news_ag = news_agent or NewsAnalystAgent()
+    res_agent = research_agent or ResearchAnalystAgent()
+    risk_ag = risk_agent or RiskAnalystAgent()
+    agg_agent = aggregator_agent or ReportAggregatorAgent()
+    rep_agent = report_generator_agent or ReportGeneratorAgent()
+
+    overrides = specialist_overrides or {}
+
+    # Node step functions
+    def _conv_step(state: GraphState) -> Dict[str, Any]:
+        trace_id = state.get("trace_id") or "trace-default"
+        logger.info("[%s] Executing conversation node", trace_id)
+        return conversation_node(state, agent=conv_agent)
+
+    def _clar_step(state: GraphState) -> Dict[str, Any]:
+        trace_id = state.get("trace_id") or "trace-default"
+        logger.info("[%s] Executing clarification node", trace_id)
+        return clarification_node(state, agent=clar_agent)
+
+    def _cio_step(state: GraphState) -> Dict[str, Any]:
+        trace_id = state.get("trace_id") or "trace-default"
+        logger.info("[%s] Executing CIO routing node", trace_id)
+        return cio_node(state, agent=active_cio)
+
+    def _aggregator_step(state: GraphState) -> Dict[str, Any]:
+        trace_id = state.get("trace_id") or "trace-default"
+        logger.info("[%s] Executing report aggregator node", trace_id)
+        try:
+            return report_aggregator_node(state, agent=agg_agent)
+        except Exception as err:
+            logger.error("[%s] Aggregator node error: %s", trace_id, err, exc_info=True)
+            return {
+                "aggregated_result": {
+                    "success": False,
+                    "error": f"Aggregator execution error: {err}",
+                    "data": None,
+                }
+            }
+
+    def _report_generator_step(state: GraphState) -> Dict[str, Any]:
+        trace_id = state.get("trace_id") or "trace-default"
+        logger.info("[%s] Executing report generator node", trace_id)
+        try:
+            return report_generator_node(state, agent=rep_agent)
+        except Exception as err:
+            logger.error(
+                "[%s] Report generator node error: %s", trace_id, err, exc_info=True
+            )
+            return {
+                "report": {
+                    "success": False,
+                    "error": f"Report generator execution error: {err}",
+                    "data": None,
+                }
+            }
+
+    # Build default specialist handlers
+    default_specialists: Dict[str, Callable[[GraphState], Dict[str, Any]]] = {
+        SpecialistName.TECHNICAL.value: lambda s: technical_analyst_node(
+            s, agent=tech_agent
+        ),
+        SpecialistName.FUNDAMENTAL.value: lambda s: fundamental_analyst_node(
+            s, agent=fund_agent
+        ),
+        SpecialistName.NEWS.value: lambda s: news_analyst_node(s, agent=news_ag),
+        SpecialistName.RESEARCH.value: lambda s: research_analyst_node(
+            s, agent=res_agent
+        ),
+        SpecialistName.RISK.value: lambda s: risk_analyst_node(s, agent=risk_ag),
+    }
+
+    builder = StateGraph(GraphState)
+
+    # 1. Add conversation and clarification nodes
+    builder.add_node(CONVERSATION_NODE_NAME, _conv_step)
+    builder.add_node(CLARIFICATION_NODE_NAME, _clar_step)
+
+    # 2. Add CIO routing node
+    builder.add_node(CIO_NODE_NAME, _cio_step)
+
+    # 3. Add 5 specialist nodes (with failure isolation & logging)
+    for spec in SpecialistName:
+        spec_name = spec.value
+        raw_handler = overrides.get(spec_name, default_specialists[spec_name])
+        safe_node = _create_safe_specialist_node(spec_name, raw_handler)
+        builder.add_node(spec_name, safe_node)
+
+    # 4. Add fan-in node
+    builder.add_node(FAN_IN_NODE_NAME, fan_in_node)
+
+    # 5. Add aggregator node
+    builder.add_node(AGGREGATOR_NODE_NAME, _aggregator_step)
+
+    # 6. Add report generator node
+    builder.add_node(REPORT_GENERATOR_NODE_NAME, _report_generator_step)
+
+    # 7. Edge: START -> Conversation
+    builder.add_edge(START, CONVERSATION_NODE_NAME)
+
+    # 8. Edges: Conversation -> Clarification or END
+    builder.add_conditional_edges(
+        CONVERSATION_NODE_NAME,
+        should_continue_after_conversation,
+        {
+            "continue": CLARIFICATION_NODE_NAME,
+            "error": END,
+        },
+    )
+
+    # 9. Edges: Clarification -> CIO or END
+    builder.add_conditional_edges(
+        CLARIFICATION_NODE_NAME,
+        should_continue_after_clarification,
+        {
+            ROUTE_CLARIFICATION_REQUIRED: END,
+            ROUTE_READY_FOR_ANALYSIS: CIO_NODE_NAME,
+        },
+    )
+
+    # 10. Edges: CIO -> Fan-Out to Specialists (or Fan-In directly if none)
+    specialist_targets = [s.value for s in SpecialistName] + [FAN_IN_NODE_NAME]
+    builder.add_conditional_edges(
+        CIO_NODE_NAME,
+        route_to_specialists,
+        specialist_targets,
+    )
+
+    # 11. Edges: Each specialist -> Fan-In
+    for spec in SpecialistName:
+        builder.add_edge(spec.value, FAN_IN_NODE_NAME)
+
+    # 12. Edges: Fan-In -> Aggregator -> Report Generator -> END
+    builder.add_edge(FAN_IN_NODE_NAME, AGGREGATOR_NODE_NAME)
+    builder.add_edge(AGGREGATOR_NODE_NAME, REPORT_GENERATOR_NODE_NAME)
+    builder.add_edge(REPORT_GENERATOR_NODE_NAME, END)
+
+    return builder.compile()
+
+
+def run_end_to_end_graph(
+    query: str,
+    investor_profile: Optional[InvestorProfile] = None,
+    documents_available: bool = False,
+    technical_metrics: Optional[Dict[str, Any]] = None,
+    fundamental_metrics: Optional[Dict[str, Any]] = None,
+    news_data: Optional[List[Dict[str, Any]]] = None,
+    research_context: Optional[Dict[str, Any]] = None,
+    clarification_answers: Optional[Dict[str, Any]] = None,
+    trace_id: Optional[str] = None,
+    target_company: Optional[str] = None,
+    ticker: Optional[str] = None,
+    conversation_agent: Optional[ConversationAgent] = None,
+    clarification_agent: Optional[ClarificationAgent] = None,
+    cio_agent: Optional[CIOAgent] = None,
+    technical_agent: Optional[TechnicalAnalystAgent] = None,
+    fundamental_agent: Optional[FundamentalAnalystAgent] = None,
+    news_agent: Optional[NewsAnalystAgent] = None,
+    research_agent: Optional[ResearchAnalystAgent] = None,
+    risk_agent: Optional[RiskAnalystAgent] = None,
+    aggregator_agent: Optional[ReportAggregatorAgent] = None,
+    report_generator_agent: Optional[ReportGeneratorAgent] = None,
+    specialist_overrides: Optional[
+        Dict[str, Callable[[GraphState], Dict[str, Any]]]
+    ] = None,
+    specialist_timeout_seconds: Optional[float] = 30.0,
+) -> GraphState:
+    """Convenience helper to run the complete Phase 13 End-to-End workflow.
+
+    Args:
+        query: User natural language prompt.
+        investor_profile: Optional existing investor profile context.
+        documents_available: Whether user uploaded documents are available.
+        technical_metrics: Optional pre-loaded technical indicators data.
+        fundamental_metrics: Optional pre-loaded fundamental financial metrics.
+        news_data: Optional pre-loaded news articles.
+        research_context: Optional pre-loaded document chunks / vault context.
+        clarification_answers: Optional user answers to clarification questions.
+        trace_id: Optional correlation identifier for structured logging.
+        target_company: Optional explicit target company name.
+        ticker: Optional explicit company ticker symbol.
+        conversation_agent: Optional ConversationAgent instance.
+        clarification_agent: Optional ClarificationAgent instance.
+        cio_agent: Optional CIOAgent instance.
+        technical_agent: Optional TechnicalAnalystAgent instance.
+        fundamental_agent: Optional FundamentalAnalystAgent instance.
+        news_agent: Optional NewsAnalystAgent instance.
+        research_agent: Optional ResearchAnalystAgent instance.
+        risk_agent: Optional RiskAnalystAgent instance.
+        aggregator_agent: Optional ReportAggregatorAgent instance.
+        report_generator_agent: Optional ReportGeneratorAgent instance.
+        specialist_overrides: Optional custom specialist handlers keyed by name.
+        specialist_timeout_seconds: Specialist timeout in seconds.
+
+    Returns:
+        GraphState: The resulting state after complete workflow execution.
+    """
+    initial_state = create_initial_state(
+        user_query=query,
+        investor_profile=investor_profile,
+        documents_available=documents_available,
+        technical_metrics=technical_metrics,
+        fundamental_metrics=fundamental_metrics,
+        news_data=news_data,
+        research_context=research_context,
+        clarification_answers=clarification_answers,
+        trace_id=trace_id,
+        target_company=target_company,
+        ticker=ticker,
+    )
+    graph = create_end_to_end_graph(
+        conversation_agent=conversation_agent,
+        clarification_agent=clarification_agent,
+        cio_agent=cio_agent,
+        technical_agent=technical_agent,
+        fundamental_agent=fundamental_agent,
+        news_agent=news_agent,
+        research_agent=research_agent,
+        risk_agent=risk_agent,
+        aggregator_agent=aggregator_agent,
+        report_generator_agent=report_generator_agent,
+        specialist_overrides=specialist_overrides,
+        specialist_timeout_seconds=specialist_timeout_seconds,
+    )
+    result: GraphState = graph.invoke(initial_state)
+    return result
+
+
+# Convenience aliases (plan.md Phase 13)
+create_finpilot_graph = create_end_to_end_graph
+run_finpilot_graph = run_end_to_end_graph

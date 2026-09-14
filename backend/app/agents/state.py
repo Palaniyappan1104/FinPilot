@@ -5,7 +5,7 @@ nodes. Nodes read fields they need and return dictionary updates containing
 only the fields they own.
 """
 
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict
 
 
 class InvestorProfile(TypedDict, total=False):
@@ -93,11 +93,39 @@ class GraphState(TypedDict, total=False):
     aggregated_result: Optional[Dict[str, Any]]
     report: Optional[Dict[str, Any]]
 
+    # Execution tracing & metadata (Phase 13)
+    trace_id: Optional[str]
+
+    # Target company & ticker resolution (Phase 13)
+    target_company: Optional[str]
+    ticker: Optional[str]
+
+    # Specialist Input Feeds & Context (Phase 13)
+    technical_metrics: Optional[Dict[str, Any]]
+    fundamental_metrics: Optional[Dict[str, Any]]
+    news_data: Optional[List[Dict[str, Any]]]
+    research_context: Optional[Dict[str, Any]]
+    research_query: Optional[str]
+
+    # Clarification Feedback Loop (Phase 13.2.1)
+    clarification_answers: Optional[Dict[str, Any]]
+
+    # Workflow Status & Errors
+    error: Optional[str]
+
 
 def create_initial_state(
     user_query: str,
     investor_profile: Optional[InvestorProfile] = None,
     documents_available: bool = False,
+    technical_metrics: Optional[Dict[str, Any]] = None,
+    fundamental_metrics: Optional[Dict[str, Any]] = None,
+    news_data: Optional[List[Dict[str, Any]]] = None,
+    research_context: Optional[Dict[str, Any]] = None,
+    clarification_answers: Optional[Dict[str, Any]] = None,
+    trace_id: Optional[str] = None,
+    target_company: Optional[str] = None,
+    ticker: Optional[str] = None,
 ) -> GraphState:
     """Initialize a clean GraphState with a user query.
 
@@ -107,6 +135,14 @@ def create_initial_state(
         user_query: Raw natural language user query.
         investor_profile: Optional existing investor profile context.
         documents_available: Whether user uploaded documents are available.
+        technical_metrics: Optional pre-loaded technical indicators data.
+        fundamental_metrics: Optional pre-loaded fundamental financial metrics.
+        news_data: Optional pre-loaded news articles.
+        research_context: Optional pre-loaded document chunks / vault context.
+        clarification_answers: Optional user answers to clarification questions.
+        trace_id: Optional correlation identifier for structured logging.
+        target_company: Optional explicit target company name.
+        ticker: Optional explicit company ticker symbol.
 
     Returns:
         GraphState: An initial state dictionary ready for workflow execution.
@@ -130,4 +166,13 @@ def create_initial_state(
         risk_result=None,
         aggregated_result=None,
         report=None,
+        trace_id=trace_id,
+        target_company=target_company,
+        ticker=ticker,
+        technical_metrics=technical_metrics,
+        fundamental_metrics=fundamental_metrics,
+        news_data=news_data,
+        research_context=research_context,
+        clarification_answers=clarification_answers,
+        error=None,
     )

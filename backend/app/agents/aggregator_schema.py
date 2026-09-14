@@ -1172,6 +1172,15 @@ class UnifiedSpecialistAnalysis(BaseModel):
         description="Structured consistency validation report from Phase 11.3.",
     )
 
+    @property
+    def available_specialists(self) -> List[SpecialistType]:
+        """List of specialists whose outputs are successfully available."""
+        return [
+            spec
+            for spec, status in self.specialist_statuses.items()
+            if status == SpecialistStatus.AVAILABLE
+        ]
+
     @field_validator("ticker")
     @classmethod
     def validate_ticker(cls, v: str) -> str:

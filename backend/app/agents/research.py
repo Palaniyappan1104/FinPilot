@@ -27,6 +27,7 @@ from app.agents.research_schema import (
     ResearchEvidenceRef,
     ResearchValidationError,
 )
+from app.agents.state import GraphState
 from app.core.llm.base import LLMProvider
 from app.core.llm.exceptions import LLMError, LLMStructuredOutputError
 from app.core.llm.factory import get_llm_provider
@@ -500,3 +501,102 @@ class ResearchAnalystAgent(BaseAgent):
                 error=f"Unexpected research analysis error: {err}",
                 confidence=0.0,
             )
+
+
+def research_analyst_node(
+    state: GraphState,
+    agent: Optional[ResearchAnalystAgent] = None,
+) -> Dict[str, Any]:
+    """LangGraph node adapter for the Research Analyst Agent.
+
+    Extracts research query and RetrievalContext from GraphState, invokes
+    the ResearchAnalystAgent, and updates 'research_result' in GraphState.
+
+    Args:
+        state: Current GraphState dictionary.
+        agent: Optional pre-configured ResearchAnalystAgent.
+
+    Returns:
+        Dict[str, Any]: State update mapping for 'research_result'.
+    """
+    active_agent = agent or ResearchAnalystAgent()
+
+    # Conditional Research Inclusion check (plan.md 13.2.3)
+    if not state.get("documents_available", False):
+        logger.info("Research analyst skipped: documents_available is False.")
+        return {
+            "research_result": {
+                "specialist": "research",
+                "status": "skipped",
+                "success": False,
+                "error": "No documents available in Research Vault.",
+            }
+        }
+
+    context_data = (
+        state.get("research_context")
+        or state.get("retrieval_context")
+        or state.get("document_context")
+    )
+    if not context_data:
+        logger.warning(
+            "Research analyst skipped: documents_available is True "
+            "but no context data in state."
+        )
+        return {
+            "research_result": {
+                "specialist": "research",
+                "status": "skipped",
+                "success": False,
+                "error": "No document chunks or research context available in state.",
+            }
+        }
+
+    query = (
+        state.get("research_query")
+        or (state.get("clarified_request") or {}).get("normalized_query")
+        or state.get("user_query")
+        or "Analyze company SEC filings and uploaded documents"
+    )
+
+    try:
+        if isinstance(context_data, RetrievalContext):
+            context = context_data
+        elif isinstance(context_data, dict):
+            context = RetrievalContext.model_validate(context_data)
+        else:
+            context = RetrievalContext(chunks=list(context_data))
+
+        analyst_input = ResearchAnalystInput(
+            query=query,
+            context=context,
+        )
+        result = active_agent.run(analyst_input)
+        if result.success and isinstance(result.data, ResearchAnalysisOutput):
+            return {
+                "research_result": {
+                    "specialist": "research",
+                    "status": "completed",
+                    "success": True,
+                    "data": result.data.model_dump(),
+                    "confidence": result.confidence,
+                }
+            }
+        return {
+            "research_result": {
+                "specialist": "research",
+                "status": "failed",
+                "success": False,
+                "error": result.error or "Research analysis execution failed.",
+            }
+        }
+    except Exception as err:
+        logger.error("Error in research_analyst_node: %s", err, exc_info=True)
+        return {
+            "research_result": {
+                "specialist": "research",
+                "status": "failed",
+                "success": False,
+                "error": str(err),
+            }
+        }
