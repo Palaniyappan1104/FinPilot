@@ -1,11 +1,11 @@
-"""FastAPI routes for FinPilot End-to-End Analysis and Reports (Phase 15.1 & 15.2).
+"""FastAPI routes for FinPilot End-to-End Analysis and Reports (Phase 15.1-15.3).
 
-Implements Phase 15.1 API endpoints with Phase 15.2 Request/Response contracts:
-- POST /api/v1/chat: Conversational query endpoint (15.1.2, 15.2.1, 15.2.2)
-- POST /api/v1/analysis: Company analysis endpoint (15.1.3, 15.2.1, 15.2.2)
-- POST /api/v1/clarification: Clarification answer submission (15.1.4, 15.2.1, 15.2.2)
-- POST /api/v1/research/query: Research query against documents (15.1.6, 15.2.1)
-- GET  /api/v1/analysis/{analysis_id}/status: Analysis status polling (15.1.7, 15.2.1)
+Implements Phase 15.1 API endpoints, 15.2 contracts, and 15.3 async execution:
+- POST /api/v1/chat: Conversational query endpoint (15.1.2, 15.2.1, 15.3.1, 15.3.2)
+- POST /api/v1/analysis: Company analysis endpoint (15.1.3, 15.2.1, 15.3.1, 15.3.2)
+- POST /api/v1/clarification: Clarification answer submission (15.1.4, 15.2.1, 15.3.2)
+- POST /api/v1/research/query: Research query against documents (15.1.6, 15.3.1, 15.3.2)
+- GET  /api/v1/analysis/{analysis_id}/status: Analysis status polling (15.1.7, 15.3.2)
 - GET  /api/v1/reports/{report_id}: Report retrieval by ID (15.1.8, 15.2.1)
 """
 
@@ -16,7 +16,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    status,
+)
 
 from app.agents.graph import run_end_to_end_graph
 from app.agents.report_formatter import (
@@ -62,7 +69,7 @@ ERROR_500_RESPONSE = {
 }
 
 # ---------------------------------------------------------------------------
-# Ephemeral API-Layer Status & Report Registry (Phase 15.1 requirement)
+# Ephemeral API-Layer Status & Report Registry (Phase 15.1 & 15.3 requirement)
 # Bounded to recent executions within the running process (no fake DB layer).
 # ---------------------------------------------------------------------------
 _RECENT_ANALYSES: Dict[str, Dict[str, Any]] = {}
@@ -97,6 +104,39 @@ def _validate_uuid_param(param_value: str, param_name: str) -> str:
         )
 
 
+def _register_running_analysis(
+    analysis_id: str,
+    trace_id: str,
+    ticker: Optional[str] = None,
+    progress_stage: str = "running",
+) -> None:
+    """Register an analysis session in 'running' state for async status tracking.
+
+    Args:
+        analysis_id: Unique analysis session identifier.
+        trace_id: Correlated trace identifier.
+        ticker: Optional associated stock ticker symbol.
+        progress_stage: Initial progress descriptor (default 'running').
+    """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with _REGISTRY_LOCK:
+        _RECENT_ANALYSES[analysis_id] = {
+            "analysis_id": analysis_id,
+            "trace_id": trace_id,
+            "status": "running",
+            "ticker": ticker,
+            "clarification_questions": [],
+            "report_id": None,
+            "created_at": now_iso,
+            "completed_at": None,
+            "error": None,
+            "progress_stage": progress_stage,
+        }
+        if len(_RECENT_ANALYSES) > _MAX_STORED_ENTRIES:
+            oldest_key = next(iter(_RECENT_ANALYSES))
+            del _RECENT_ANALYSES[oldest_key]
+
+
 def _store_analysis_record(
     analysis_id: str,
     trace_id: str,
@@ -105,15 +145,23 @@ def _store_analysis_record(
     questions: List[str],
     report: Optional[FinalReport],
     error: Optional[str] = None,
+    progress_stage: Optional[str] = None,
 ) -> Tuple[str, Optional[str]]:
-    """Record an analysis lifecycle state in the ephemeral API registry."""
+    """Record or update an analysis lifecycle state in the ephemeral API registry."""
     now_iso = datetime.now(timezone.utc).isoformat()
     report_id: Optional[str] = None
 
     with _REGISTRY_LOCK:
+        existing = _RECENT_ANALYSES.get(analysis_id)
+        created_at = existing["created_at"] if existing else now_iso
+
         if report is not None:
             report_id = str(uuid.uuid4())
             _RECENT_REPORTS[report_id] = report
+
+        resolved_stage = progress_stage or (
+            "completed" if execution_status == "completed" else execution_status
+        )
 
         _RECENT_ANALYSES[analysis_id] = {
             "analysis_id": analysis_id,
@@ -122,9 +170,10 @@ def _store_analysis_record(
             "ticker": ticker,
             "clarification_questions": questions,
             "report_id": report_id,
-            "created_at": now_iso,
+            "created_at": created_at,
             "completed_at": now_iso,
             "error": error,
+            "progress_stage": resolved_stage,
         }
 
         # Keep memory footprint bounded
@@ -207,7 +256,7 @@ def _extract_response_from_state(
 
 
 # ---------------------------------------------------------------------------
-# 15.1.2 Chat / Query Endpoint
+# 15.1.2 Chat / Query Endpoint (Async enabled via 15.3)
 # ---------------------------------------------------------------------------
 @router.post(
     "/chat",
@@ -217,7 +266,8 @@ def _extract_response_from_state(
     description=(
         "Processes a natural language query through Conversation and "
         "Clarification agents. Halts with clarification questions if missing "
-        "constraints, or proceeds through the full pipeline to a completed report."
+        "constraints, or proceeds through the full pipeline to a completed report. "
+        "Supports asynchronous execution via background=true."
     ),
     responses={
         422: ERROR_422_RESPONSE,
@@ -226,6 +276,15 @@ def _extract_response_from_state(
 )
 async def chat_query(
     request: ChatQueryRequest,
+    background_tasks: BackgroundTasks,
+    background: bool = Query(
+        default=False,
+        description=(
+            "If true, execute analysis asynchronously in a background task "
+            "and immediately return status 'running'. Poll GET /analysis/{id}/status "
+            "for completion."
+        ),
+    ),
     runner: Callable[..., GraphState] = Depends(get_graph_runner),
 ) -> AnalysisExecutionResponse:
     """Execute conversational query through the end-to-end graph."""
@@ -237,6 +296,47 @@ async def chat_query(
         if request.investor_profile
         else None
     )
+
+    if background:
+        _register_running_analysis(analysis_id, trace_id, progress_stage="running")
+
+        def _run_bg_chat() -> None:
+            try:
+                final_state = runner(
+                    query=request.query,
+                    investor_profile=profile_dict,
+                    documents_available=request.documents_available,
+                    trace_id=trace_id,
+                )
+                _extract_response_from_state(final_state, analysis_id, trace_id)
+            except Exception as exc:
+                logger.exception(
+                    "Background chat execution failed for %s: %s", analysis_id, exc
+                )
+                _store_analysis_record(
+                    analysis_id=analysis_id,
+                    trace_id=trace_id,
+                    execution_status="failed",
+                    ticker=None,
+                    questions=[],
+                    report=None,
+                    error="Failed to process analysis query. Please try again.",
+                    progress_stage="failed",
+                )
+
+        background_tasks.add_task(_run_bg_chat)
+
+        return AnalysisExecutionResponse(
+            analysis_id=analysis_id,
+            trace_id=trace_id,
+            status="running",
+            clarification_needed=False,
+            clarification_questions=[],
+            investor_profile=profile_dict,
+            report=None,
+            report_id=None,
+            error=None,
+        )
 
     try:
         final_state = runner(
@@ -256,7 +356,7 @@ async def chat_query(
 
 
 # ---------------------------------------------------------------------------
-# 15.1.3 Company Analysis Endpoint
+# 15.1.3 Company Analysis Endpoint (Async enabled via 15.3)
 # ---------------------------------------------------------------------------
 @router.post(
     "/analysis",
@@ -266,7 +366,8 @@ async def chat_query(
     description=(
         "Triggers the complete FinPilot multi-agent workflow for a target equity "
         "ticker and investor profile. Returns a structured FinalReport or "
-        "clarification questions."
+        "clarification questions. Supports asynchronous background execution "
+        "via background=true."
     ),
     responses={
         422: ERROR_422_RESPONSE,
@@ -275,6 +376,15 @@ async def chat_query(
 )
 async def company_analysis(
     request: CompanyAnalysisRequest,
+    background_tasks: BackgroundTasks,
+    background: bool = Query(
+        default=False,
+        description=(
+            "If true, execute analysis asynchronously in a background task "
+            "and immediately return status 'running'. Poll GET /analysis/{id}/status "
+            "for progress."
+        ),
+    ),
     runner: Callable[..., GraphState] = Depends(get_graph_runner),
 ) -> AnalysisExecutionResponse:
     """Execute company investment analysis through the end-to-end graph."""
@@ -292,6 +402,59 @@ async def company_analysis(
         profile_dict.setdefault("target_company", request.target_company)
 
     query = request.query or f"Analyze investment feasibility for {clean_ticker}"
+
+    if background:
+        _register_running_analysis(
+            analysis_id, trace_id, ticker=clean_ticker, progress_stage="running"
+        )
+
+        def _run_bg_analysis() -> None:
+            try:
+                final_state = runner(
+                    query=query,
+                    investor_profile=profile_dict,
+                    documents_available=request.documents_available,
+                    clarification_answers=request.clarification_answers,
+                    ticker=clean_ticker,
+                    target_company=request.target_company,
+                    trace_id=trace_id,
+                )
+                _extract_response_from_state(
+                    final_state,
+                    analysis_id,
+                    trace_id,
+                    fallback_ticker=clean_ticker,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Background analysis execution failed for %s: %s",
+                    analysis_id,
+                    exc,
+                )
+                _store_analysis_record(
+                    analysis_id=analysis_id,
+                    trace_id=trace_id,
+                    execution_status="failed",
+                    ticker=clean_ticker,
+                    questions=[],
+                    report=None,
+                    error="Failed to execute company analysis. Please try again.",
+                    progress_stage="failed",
+                )
+
+        background_tasks.add_task(_run_bg_analysis)
+
+        return AnalysisExecutionResponse(
+            analysis_id=analysis_id,
+            trace_id=trace_id,
+            status="running",
+            clarification_needed=False,
+            clarification_questions=[],
+            investor_profile=profile_dict,
+            report=None,
+            report_id=None,
+            error=None,
+        )
 
     try:
         final_state = runner(
@@ -316,7 +479,7 @@ async def company_analysis(
 
 
 # ---------------------------------------------------------------------------
-# 15.1.4 Clarification Submission Endpoint
+# 15.1.4 Clarification Submission Endpoint (Async enabled via 15.3)
 # ---------------------------------------------------------------------------
 @router.post(
     "/clarification",
@@ -325,7 +488,8 @@ async def company_analysis(
     summary="Submit answers to clarification questions",
     description=(
         "Submits answers to missing investor profile fields, resolving the "
-        "clarification halt and continuing graph execution to full report completion."
+        "clarification halt and continuing graph execution to full report completion. "
+        "Supports asynchronous background execution via background=true."
     ),
     responses={
         422: ERROR_422_RESPONSE,
@@ -334,6 +498,14 @@ async def company_analysis(
 )
 async def submit_clarification(
     request: ClarificationSubmitRequest,
+    background_tasks: BackgroundTasks,
+    background: bool = Query(
+        default=False,
+        description=(
+            "If true, resume analysis asynchronously in a background task "
+            "and immediately return status 'running'."
+        ),
+    ),
     runner: Callable[..., GraphState] = Depends(get_graph_runner),
 ) -> AnalysisExecutionResponse:
     """Submit clarification answers and resume pipeline execution."""
@@ -347,6 +519,58 @@ async def submit_clarification(
     )
 
     query = request.query or "Proceed with analysis using provided clarifications"
+
+    if background:
+        _register_running_analysis(
+            analysis_id, trace_id, ticker=request.ticker, progress_stage="running"
+        )
+
+        def _run_bg_clarification() -> None:
+            try:
+                final_state = runner(
+                    query=query,
+                    investor_profile=profile_dict,
+                    documents_available=request.documents_available,
+                    clarification_answers=request.clarification_answers,
+                    ticker=request.ticker,
+                    trace_id=trace_id,
+                )
+                _extract_response_from_state(
+                    final_state,
+                    analysis_id,
+                    trace_id,
+                    fallback_ticker=request.ticker,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Background clarification execution failed for %s: %s",
+                    analysis_id,
+                    exc,
+                )
+                _store_analysis_record(
+                    analysis_id=analysis_id,
+                    trace_id=trace_id,
+                    execution_status="failed",
+                    ticker=request.ticker,
+                    questions=[],
+                    report=None,
+                    error="Failed to submit clarification answers. Please try again.",
+                    progress_stage="failed",
+                )
+
+        background_tasks.add_task(_run_bg_clarification)
+
+        return AnalysisExecutionResponse(
+            analysis_id=analysis_id,
+            trace_id=trace_id,
+            status="running",
+            clarification_needed=False,
+            clarification_questions=[],
+            investor_profile=profile_dict,
+            report=None,
+            report_id=None,
+            error=None,
+        )
 
     try:
         final_state = runner(
@@ -370,7 +594,7 @@ async def submit_clarification(
 
 
 # ---------------------------------------------------------------------------
-# 15.1.6 Research Query Endpoint
+# 15.1.6 Research Query Endpoint (Async enabled via 15.3)
 # ---------------------------------------------------------------------------
 @router.post(
     "/research/query",
@@ -379,7 +603,8 @@ async def submit_clarification(
     summary="Ask research questions against uploaded documents",
     description=(
         "Submits a research query targeted at document filings and corporate "
-        "disclosures, routing through the Research Analyst specialist."
+        "disclosures, routing through the Research Analyst specialist. "
+        "Supports asynchronous background execution via background=true."
     ),
     responses={
         422: ERROR_422_RESPONSE,
@@ -388,12 +613,70 @@ async def submit_clarification(
 )
 async def research_query(
     request: ResearchQueryRequest,
+    background_tasks: BackgroundTasks,
+    background: bool = Query(
+        default=False,
+        description=(
+            "If true, execute research query asynchronously in a background task "
+            "and immediately return status 'running'."
+        ),
+    ),
     runner: Callable[..., GraphState] = Depends(get_graph_runner),
 ) -> AnalysisExecutionResponse:
     """Execute research document query through the end-to-end graph."""
     analysis_id = str(uuid.uuid4())
     trace_id = request.trace_id or f"trace-{uuid.uuid4().hex[:12]}"
     clean_ticker = request.ticker
+
+    if background:
+        _register_running_analysis(
+            analysis_id, trace_id, ticker=clean_ticker, progress_stage="running"
+        )
+
+        def _run_bg_research() -> None:
+            try:
+                final_state = runner(
+                    query=request.query,
+                    ticker=clean_ticker,
+                    documents_available=request.documents_available,
+                    trace_id=trace_id,
+                )
+                _extract_response_from_state(
+                    final_state,
+                    analysis_id,
+                    trace_id,
+                    fallback_ticker=clean_ticker,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Background research execution failed for %s: %s",
+                    analysis_id,
+                    exc,
+                )
+                _store_analysis_record(
+                    analysis_id=analysis_id,
+                    trace_id=trace_id,
+                    execution_status="failed",
+                    ticker=clean_ticker,
+                    questions=[],
+                    report=None,
+                    error="Failed to execute research query. Please try again.",
+                    progress_stage="failed",
+                )
+
+        background_tasks.add_task(_run_bg_research)
+
+        return AnalysisExecutionResponse(
+            analysis_id=analysis_id,
+            trace_id=trace_id,
+            status="running",
+            clarification_needed=False,
+            clarification_questions=[],
+            investor_profile=None,
+            report=None,
+            report_id=None,
+            error=None,
+        )
 
     try:
         final_state = runner(
@@ -415,7 +698,7 @@ async def research_query(
 
 
 # ---------------------------------------------------------------------------
-# 15.1.7 Analysis Status Polling Endpoint
+# 15.1.7 Analysis Status Polling Endpoint (Phase 15.1 & 15.3.2)
 # ---------------------------------------------------------------------------
 @router.get(
     "/analysis/{analysis_id}/status",
@@ -423,7 +706,8 @@ async def research_query(
     status_code=status.HTTP_200_OK,
     summary="Poll analysis status",
     description=(
-        "Polls the lifecycle execution status of an active or completed analysis."
+        "Polls the lifecycle execution status of an active, running, "
+        "or completed analysis."
     ),
     responses={
         400: ERROR_400_RESPONSE,
@@ -457,6 +741,7 @@ async def get_analysis_status(
         created_at=record["created_at"],
         completed_at=record.get("completed_at"),
         error=record.get("error"),
+        progress_stage=record.get("progress_stage"),
     )
 
 

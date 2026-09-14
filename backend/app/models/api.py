@@ -407,7 +407,7 @@ class AnalysisExecutionResponse(BaseModel):
 
     analysis_id: str = Field(..., description="Unique analysis session identifier")
     trace_id: str = Field(..., description="Correlated trace identifier")
-    status: Literal["completed", "clarification_needed", "failed"] = Field(
+    status: Literal["completed", "clarification_needed", "failed", "running"] = Field(
         ..., description="Overall workflow execution outcome"
     )
     clarification_needed: bool = Field(
@@ -434,7 +434,7 @@ class AnalysisExecutionResponse(BaseModel):
 
 
 class AnalysisStatusResponse(BaseModel):
-    """Status tracking response for an analysis session (15.1.7, 15.2.1)."""
+    """Status tracking response for an analysis session (15.1.7, 15.2.1, 15.3.2)."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -458,6 +458,13 @@ class AnalysisStatusResponse(BaseModel):
         default=None, description="ISO 8601 completion timestamp"
     )
     error: Optional[str] = Field(default=None, description="Error message if failed")
+    progress_stage: Optional[str] = Field(
+        default=None,
+        description=(
+            "Current workflow execution stage "
+            "(e.g., 'running', 'completed', 'failed')"
+        ),
+    )
 
 
 class ReportRetrievalResponse(BaseModel):
