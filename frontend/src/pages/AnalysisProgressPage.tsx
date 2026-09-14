@@ -1,90 +1,121 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, ArrowRight, Layers, FileText } from 'lucide-react';
-import { useApp, ActiveAnalysisState } from '../context/AppContext';
+import { useApp } from '../context/AppContext';
 import { AnalysisProgressBar } from '../components/analysis/AnalysisProgressBar';
 import { SpecialistStatusGrid } from '../components/analysis/SpecialistStatusGrid';
-import { mockApi, AnalysisStatusPayload } from '../services/mockApi';
-import { SpecialistStatus, SpecialistType } from '../types';
+import { apiService, ApiError, AnalysisStatusPayload } from '../services/api';
+import { SpecialistType } from '../types';
+import { EmptyState } from '../components/common/EmptyState';
 
 export const AnalysisProgressPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { activeAnalysis, setActiveAnalysis } = useApp();
 
-  const [stepIndex, setStepIndex] = useState(2);
-  const [isSimulating, setIsSimulating] = useState(true);
+  const analysisId = id || activeAnalysis?.analysisId;
+  const ticker = activeAnalysis?.ticker || '';
 
-  const analysisId = id || activeAnalysis?.analysisId || 'an-active';
-  const ticker = activeAnalysis?.ticker || 'AAPL';
-  const reportId = activeAnalysis?.reportId || 'rep-aapl-001';
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    if (isSimulating && stepIndex < 4) {
-      timer = setTimeout(() => {
-        setStepIndex((prev: number) => prev + 1);
-      }, 700);
-    } else if (stepIndex >= 4) {
-      setIsSimulating(false);
-      setActiveAnalysis((prev: ActiveAnalysisState | null) =>
-        prev
-          ? {
-              ...prev,
-              status: 'completed',
-              progressPercent: 100,
-              progressStage: 'Final Investment Report synthesized & formatted',
-              specialistStatuses: {
-                technical: 'completed',
-                fundamental: 'completed',
-                news: 'completed',
-                research: 'completed',
-                risk: 'completed',
-              },
-            }
-          : null,
-      );
-    }
-    return () => clearTimeout(timer);
-  }, [stepIndex, isSimulating, setActiveAnalysis]);
-
-  const [statusPayload, setStatusPayload] = useState<{
-    progressPercent: number;
-    progressStage: string;
-    specialistStatuses: Record<SpecialistType, SpecialistStatus>;
-  }>({
-    progressPercent: 75,
-    progressStage: 'Aggregating cross-domain findings & checking conflicts',
-    specialistStatuses: {
-      technical: 'completed',
-      fundamental: 'completed',
-      news: 'completed',
+  const [statusPayload, setStatusPayload] = useState<AnalysisStatusPayload>({
+    analysisId: analysisId || '',
+    ticker: ticker || 'Target Equity',
+    status: activeAnalysis?.status || 'running',
+    progressPercent: activeAnalysis?.progressPercent || 35,
+    progressStage: activeAnalysis?.progressStage || 'Executing multi-agent research pipeline',
+    specialistStatuses: activeAnalysis?.specialistStatuses || {
+      technical: 'running',
+      fundamental: 'running',
+      news: 'running',
       research: 'running',
       risk: 'running',
     },
+    reportId: activeAnalysis?.reportId,
   });
 
+  const [pollError, setPollError] = useState<string | null>(null);
+
   useEffect(() => {
-    let active = true;
-    mockApi.getAnalysisStatus(analysisId, stepIndex).then((res: AnalysisStatusPayload) => {
-      if (active) {
-        setStatusPayload({
-          progressPercent: res.progressPercent,
-          progressStage: res.progressStage,
-          specialistStatuses: res.specialistStatuses,
-        });
+    let isMounted = true;
+    let pollCount = 0;
+    const maxPolls = 60; // 90 seconds max
+
+    if (!analysisId) {
+      return;
+    }
+
+    const poll = async () => {
+      try {
+        const res = await apiService.getAnalysisStatus(analysisId);
+        if (!isMounted) return;
+
+        setStatusPayload(res);
+
+        if (res.status === 'completed') {
+          setActiveAnalysis((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: 'completed',
+                  progressPercent: 100,
+                  progressStage: res.progressStage,
+                  specialistStatuses: res.specialistStatuses,
+                  reportId: res.reportId,
+                }
+              : null,
+          );
+          return; // Stop polling
+        }
+
+        if (res.status === 'failed') {
+          setPollError(res.error || 'Analysis encountered a failure.');
+          return; // Stop polling
+        }
+
+        if (res.status === 'clarification_needed') {
+          return; // Stop polling
+        }
+
+        // Continue polling if still running
+        pollCount++;
+        if (pollCount < maxPolls && isMounted) {
+          setTimeout(poll, 1500);
+        } else if (pollCount >= maxPolls && isMounted) {
+          setPollError('Analysis is taking longer than expected. Please check back shortly.');
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        const msg = err instanceof ApiError ? err.message : 'Error checking analysis status.';
+        setPollError(msg);
       }
-    });
-    return () => {
-      active = false;
     };
-  }, [analysisId, stepIndex]);
+
+    poll();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [analysisId, setActiveAnalysis]);
 
   const handleSelectSpecialist = (type: SpecialistType) => {
     navigate(`/analysis/${analysisId}/specialists?tab=${type}`);
   };
 
-  const isComplete = statusPayload.progressPercent >= 100;
+  if (!analysisId) {
+    return (
+      <div data-testid="analysis-progress-page" className="max-w-md mx-auto">
+        <EmptyState
+          title="No Active Analysis Pipeline"
+          description="There is no ongoing multi-agent analysis session. Please start an analysis from the New Analysis page."
+          icon={<Layers className="w-6 h-6 text-slate-500" />}
+          actionLabel="Start New Analysis"
+          onAction={() => navigate('/analysis/new')}
+        />
+      </div>
+    );
+  }
+
+  const isComplete = statusPayload.status === 'completed' || statusPayload.progressPercent >= 100;
+  const reportId = statusPayload.reportId || activeAnalysis?.reportId;
 
   return (
     <div data-testid="analysis-progress-page" className="space-y-6">
@@ -114,17 +145,32 @@ export const AnalysisProgressPage: React.FC = () => {
               <Layers className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
               Specialist Insights
             </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/reports/${reportId}`)}
-              className="inline-flex items-center px-4 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm"
-            >
-              <FileText className="w-3.5 h-3.5 mr-1.5" />
-              View Investment Report
-            </button>
+            {reportId && (
+              <button
+                type="button"
+                onClick={() => navigate(`/reports/${reportId}`)}
+                className="inline-flex items-center px-4 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm"
+              >
+                <FileText className="w-3.5 h-3.5 mr-1.5" />
+                View Investment Report
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {pollError && (
+        <div data-testid="poll-error-banner" className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center justify-between">
+          <span>{pollError}</span>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="text-xs font-bold underline hover:text-rose-950 ml-3"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Progress Bar & Stepper */}
       <AnalysisProgressBar
@@ -153,14 +199,18 @@ export const AnalysisProgressPage: React.FC = () => {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate(`/reports/${reportId}`)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-colors shadow-sm"
-          >
-            <span>Examine Final Report</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {reportId ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/reports/${reportId}`)}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-colors shadow-sm"
+            >
+              <span>Examine Final Report</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <span className="text-xs text-slate-500 italic">Report identifier resolving...</span>
+          )}
         </div>
       )}
     </div>

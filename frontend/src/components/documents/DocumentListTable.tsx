@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, CheckCircle2 } from 'lucide-react';
 import { DocumentItem } from '../../types';
+import { EmptyState } from '../common/EmptyState';
 
 interface DocumentListTableProps {
   documents: DocumentItem[];
@@ -13,11 +14,12 @@ export const DocumentListTable: React.FC<DocumentListTableProps> = ({
 }) => {
   if (documents.length === 0) {
     return (
-      <div className="p-8 text-center bg-white border border-slate-200 rounded-xl">
-        <p className="text-xs text-slate-500">
-          No research documents indexed in the vault yet. Upload SEC filings above to begin.
-        </p>
-      </div>
+      <EmptyState
+        title="Filing Vault Is Empty"
+        description="No research documents indexed in the vault yet. Upload SEC filings above to begin."
+        icon={<FileText className="w-6 h-6 text-slate-500" />}
+        className={className}
+      />
     );
   }
 

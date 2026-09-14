@@ -100,7 +100,7 @@ export const ExecutiveRecommendation: React.FC<
               </div>
               <p className="text-[11px] text-slate-600 leading-snug">
                 {recommendation.time_horizon_suitability ||
-                  'Favorable alignment for multi-year compounding.'}
+                  'Not specified in report synthesis.'}
               </p>
             </div>
 
@@ -111,7 +111,7 @@ export const ExecutiveRecommendation: React.FC<
               </div>
               <p className="text-[11px] text-slate-600 leading-snug">
                 {recommendation.risk_tolerance_suitability ||
-                  'Consistent with moderate drawdown parameters.'}
+                  'Not specified in report synthesis.'}
               </p>
             </div>
 
@@ -122,7 +122,7 @@ export const ExecutiveRecommendation: React.FC<
               </div>
               <p className="text-[11px] text-slate-600 leading-snug">
                 {recommendation.capital_allocation_notes ||
-                  'Staggered tranche entry recommended.'}
+                  'Not specified in report synthesis.'}
               </p>
             </div>
           </div>

@@ -22,8 +22,7 @@ import {
   SpecialistStatus,
   SpecialistType,
 } from '../types';
-import { mockApi } from '../services/mockApi';
-import { MOCK_COMPANIES, MOCK_RECENT_ANALYSES } from '../services/mockData';
+import { apiService } from '../services/api';
 
 const SESSION_PROFILE_STORAGE_KEY = 'finpilot_investor_profile';
 
@@ -132,9 +131,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   // 2. Selected Company (16.4)
-  const [selectedCompany, setSelectedCompany] = useState<CompanyInfo | null>(
-    MOCK_COMPANIES.AAPL,
-  );
+  const [selectedCompany, setSelectedCompany] = useState<CompanyInfo | null>(null);
 
   // 3. Active Analysis & Pipeline Status (16.6)
   const [activeAnalysis, setActiveAnalysis] =
@@ -142,13 +139,11 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // 4. Reports & Recent Analyses (16.2, 16.9)
   const [activeReport, setActiveReport] = useState<FinalReport | null>(null);
-  const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSummary[]>(
-    MOCK_RECENT_ANALYSES,
-  );
+  const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSummary[]>([]);
 
   const refreshRecentAnalyses = useCallback(async () => {
     try {
-      const data = await mockApi.getRecentAnalyses();
+      const data = await apiService.getRecentAnalyses();
       setRecentAnalyses(data);
     } catch {
       // Keep existing
@@ -185,7 +180,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshDocuments = useCallback(async () => {
     try {
-      const docs = await mockApi.getDocuments();
+      const docs = await apiService.getDocuments();
       setDocuments(docs);
     } catch {
       // Keep existing
@@ -204,21 +199,19 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({
     async (ticker: string, customProfile?: InvestorProfile): Promise<string> => {
       setIsLoading(true);
       const targetProfile = customProfile || profile;
-      const comp = MOCK_COMPANIES[ticker.toUpperCase()] || {
-        ticker: ticker.toUpperCase(),
-        name: `${ticker.toUpperCase()} Corporation`,
-        sector: 'Technology',
-      };
+      const compName = selectedCompany?.ticker.toUpperCase() === ticker.toUpperCase()
+        ? selectedCompany.name
+        : `${ticker.toUpperCase()}`;
 
-      const { analysisId, reportId } = await mockApi.startAnalysis(
+      const { analysisId, reportId } = await apiService.startAnalysis(
         ticker,
         targetProfile,
       );
 
       const initialActive: ActiveAnalysisState = {
         analysisId,
-        ticker: comp.ticker,
-        companyName: comp.name,
+        ticker: ticker.toUpperCase(),
+        companyName: compName,
         status: 'running',
         progressPercent: 20,
         progressStage: 'CIO Agent allocating specialist domains',

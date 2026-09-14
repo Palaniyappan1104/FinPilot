@@ -1,6 +1,7 @@
 import React from 'react';
 import { Activity, CheckCircle2 } from 'lucide-react';
 import { TechnicalReportSection } from '../../types';
+import { MetricCard } from '../common/MetricCard';
 
 interface TechnicalViewProps {
   data?: TechnicalReportSection;
@@ -58,64 +59,50 @@ export const TechnicalView: React.FC<TechnicalViewProps> = ({
 
       {/* Primary Indicator Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* RSI */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            RSI (14-Day)
-          </div>
-          <div className="text-xl font-black text-slate-900 mt-1">
-            {data.rsi_14.toFixed(1)}
-          </div>
-          <span
-            className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mt-1 inline-block ${
-              data.rsi_status === 'overbought'
-                ? 'bg-rose-100 text-rose-800'
-                : data.rsi_status === 'oversold'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-slate-200 text-slate-700'
-            }`}
-          >
-            {data.rsi_status}
-          </span>
-        </div>
+        <MetricCard
+          label="RSI (14-Day)"
+          value={data.rsi_14.toFixed(1)}
+          size="lg"
+          badge={
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mt-1 inline-block ${
+                data.rsi_status === 'overbought'
+                  ? 'bg-rose-100 text-rose-800'
+                  : data.rsi_status === 'oversold'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-slate-200 text-slate-700'
+              }`}
+            >
+              {data.rsi_status}
+            </span>
+          }
+        />
 
-        {/* Moving Averages */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            SMA Alignment
-          </div>
+        <MetricCard
+          label="SMA Alignment"
+          size="lg"
+        >
           <div className="text-xs font-bold text-slate-800 mt-1 space-y-0.5">
             <div>20d: ${data.sma_20.toFixed(1)}</div>
             <div>50d: ${data.sma_50.toFixed(1)}</div>
             <div>200d: ${data.sma_200.toFixed(1)}</div>
           </div>
-        </div>
+        </MetricCard>
 
-        {/* MACD */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            MACD Stance
-          </div>
-          <div className="text-xl font-black text-slate-900 mt-1 capitalize">
-            {data.macd_signal}
-          </div>
-          <span className="text-[10px] text-slate-500 mt-1 block">
-            Histogram slope positive
-          </span>
-        </div>
+        <MetricCard
+          label="MACD Stance"
+          value={data.macd_signal}
+          valueClassName="text-xl font-black text-slate-900 mt-1 capitalize"
+          subtext="Histogram slope positive"
+          size="lg"
+        />
 
-        {/* 30-Day Volatility */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            30d Volatility
-          </div>
-          <div className="text-xl font-black text-slate-900 mt-1">
-            {data.volatility_30d_pct.toFixed(1)}%
-          </div>
-          <span className="text-[10px] text-slate-500 mt-1 block">
-            Annualized standard dev
-          </span>
-        </div>
+        <MetricCard
+          label="30d Volatility"
+          value={`${data.volatility_30d_pct.toFixed(1)}%`}
+          subtext="Annualized standard dev"
+          size="lg"
+        />
       </div>
 
       {/* Support & Resistance Bar */}

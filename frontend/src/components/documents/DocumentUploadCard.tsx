@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { DocumentItem } from '../../types';
-import { mockApi } from '../../services/mockApi';
+import { apiService, ApiError } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 interface DocumentUploadCardProps {
@@ -13,9 +13,9 @@ export const DocumentUploadCard: React.FC<DocumentUploadCardProps> = ({
   onUploaded,
   className = '',
 }) => {
-  const { refreshDocuments } = useApp();
+  const { refreshDocuments, selectedCompany } = useApp();
 
-  const [ticker, setTicker] = useState('AAPL');
+  const [ticker, setTicker] = useState(selectedCompany?.ticker || '');
   const [docType, setDocType] =
     useState<DocumentItem['doc_type']>('10-K');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -56,8 +56,8 @@ export const DocumentUploadCard: React.FC<DocumentUploadCardProps> = ({
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setErrorMessage('Validation failure: File size exceeds the 50MB maximum threshold.');
+    if (file.size > 20 * 1024 * 1024) {
+      setErrorMessage('Validation failure: File size exceeds the 20MB maximum threshold.');
       setSelectedFile(null);
       return;
     }
@@ -92,7 +92,7 @@ export const DocumentUploadCard: React.FC<DocumentUploadCardProps> = ({
         });
       }, 70);
 
-      const newDoc = await mockApi.uploadDocument(selectedFile, ticker, docType);
+      const newDoc = await apiService.uploadDocument(selectedFile, ticker, docType);
       clearInterval(interval);
       setUploadProgress(100);
 
@@ -104,7 +104,7 @@ export const DocumentUploadCard: React.FC<DocumentUploadCardProps> = ({
       await refreshDocuments();
       if (onUploaded) onUploaded(newDoc);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Upload failed';
+      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Upload failed';
       setErrorMessage(msg);
     } finally {
       setIsUploading(false);
@@ -232,7 +232,7 @@ export const DocumentUploadCard: React.FC<DocumentUploadCardProps> = ({
                   </button>
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  PDF format only • Maximum file size: 50MB
+                  PDF format only • Maximum file size: 20MB
                 </p>
               </div>
             )}

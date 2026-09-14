@@ -6,7 +6,7 @@ import { CompanySearch } from '../components/company/CompanySearch';
 import { CompanyOverviewCard } from '../components/company/CompanyOverviewCard';
 import { InvestorProfileForm } from '../components/profile/InvestorProfileForm';
 import { ChatWindow } from '../components/chat/ChatWindow';
-import { MOCK_COMPANIES } from '../services/mockData';
+import { apiService } from '../services/api';
 import { CompanyInfo } from '../types';
 
 export const NewAnalysisPage: React.FC = () => {
@@ -24,14 +24,19 @@ export const NewAnalysisPage: React.FC = () => {
 
   // Sync with URL query or ticker
   useEffect(() => {
+    let active = true;
     const tickerParam = searchParams.get('ticker');
     if (tickerParam) {
-      const comp = MOCK_COMPANIES[tickerParam.toUpperCase()];
-      if (comp) {
-        setSelectedCompany(comp);
-        updateProfile({ ticker: comp.ticker, target_company: comp.name });
-      }
+      apiService.getCompany(tickerParam).then((comp) => {
+        if (active && comp) {
+          setSelectedCompany(comp);
+          updateProfile({ ticker: comp.ticker, target_company: comp.name });
+        }
+      });
     }
+    return () => {
+      active = false;
+    };
   }, [searchParams, setSelectedCompany, updateProfile]);
 
   const handleSelectCompany = (comp: CompanyInfo) => {

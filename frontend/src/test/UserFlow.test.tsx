@@ -2,10 +2,74 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from '../App';
 
-describe('Main User Flow Integration Test (Phase 16.10.2)', () => {
+describe('Main User Flow Integration Test (Phase 17.4)', () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     vi.restoreAllMocks();
     sessionStorage.clear();
+
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = String(url);
+
+      if (urlStr.includes('/api/v1/chat')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            analysis_id: 'an-flow-001',
+            trace_id: 'tr-flow-001',
+            status: 'completed',
+            clarification_needed: false,
+            clarification_questions: [],
+            report_id: 'rep-aapl-001',
+          }),
+        };
+      }
+
+      if (urlStr.includes('/api/v1/reports/')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            report_id: 'rep-aapl-001',
+            format: 'json',
+            report: {
+              report_id: 'rep-aapl-001',
+              company: { ticker: 'AAPL', name: 'Apple Inc.', currency: 'USD' },
+              recommendation: {
+                stance: 'favorable',
+                rationale: 'Exceptional profitability and ecosystem retention.',
+              },
+              overall_assessment: {
+                synthesis: 'Holistic multi-agent consensus indicates strong financial health.',
+                data_completeness_ratio: 1.0,
+              },
+              evidence_sources: [
+                {
+                  reference_id: 'EV-FLOW-01',
+                  detail: 'Operating margins hold steady above 30%.',
+                  specialist: 'fundamental',
+                },
+              ],
+              important_risks: ['Regulatory scrutiny over App Store practices.'],
+              disclaimer:
+                'FinPilot provides automated financial research for informational purposes only. Past performance does not guarantee future results. All investments carry risk of loss.',
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'ok' }),
+      } as Response;
+    }) as typeof globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it('completes the full research journey from query to report against mocked API', async () => {
@@ -47,7 +111,7 @@ describe('Main User Flow Integration Test (Phase 16.10.2)', () => {
 
     // Verify company overview card renders
     expect(screen.getByTestId('company-overview-card')).toBeInTheDocument();
-    expect(screen.getByText('$3.48T')).toBeInTheDocument();
+    expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
 
     // 4. Submit query into Conversation Agent
     const chatInput = screen.getByPlaceholderText(

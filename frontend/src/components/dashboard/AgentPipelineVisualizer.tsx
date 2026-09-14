@@ -28,7 +28,7 @@ export const AgentPipelineVisualizer: React.FC<{ className?: string }> = ({
           </h3>
         </div>
         <span className="text-[11px] text-slate-400">
-          Supervised Orchestration (Phase 2–13 Architecture)
+          Multi-Agent Analysis Pipeline
         </span>
       </div>
 

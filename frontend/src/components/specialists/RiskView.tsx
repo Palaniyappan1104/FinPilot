@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldAlert, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { RiskReportSection } from '../../types';
+import { MetricCard } from '../common/MetricCard';
 
 interface RiskViewProps {
   data?: RiskReportSection;
@@ -72,29 +73,21 @@ export const RiskView: React.FC<RiskViewProps> = ({
 
       {/* Quantitative Risk Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase">
-            Value at Risk (95% 1-Month VaR)
-          </span>
-          <div className="text-2xl font-black text-slate-900 mt-1">
-            {data.var_95_pct.toFixed(1)}%
-          </div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">
-            Maximum expected 1-month drawdown at 95% statistical confidence
-          </span>
-        </div>
+        <MetricCard
+          label="Value at Risk (95% 1-Month VaR)"
+          value={`${data.var_95_pct.toFixed(1)}%`}
+          valueClassName="text-2xl font-black text-slate-900 mt-1"
+          subtext="Maximum expected 1-month drawdown at 95% statistical confidence"
+          size="lg"
+        />
 
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase">
-            Max Historical Drawdown (3-Year)
-          </span>
-          <div className="text-2xl font-black text-slate-900 mt-1">
-            -{data.max_drawdown_pct.toFixed(1)}%
-          </div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">
-            Peak-to-trough price decline experienced in trailing 36 months
-          </span>
-        </div>
+        <MetricCard
+          label="Max Historical Drawdown (3-Year)"
+          value={`-${data.max_drawdown_pct.toFixed(1)}%`}
+          valueClassName="text-2xl font-black text-slate-900 mt-1"
+          subtext="Peak-to-trough price decline experienced in trailing 36 months"
+          size="lg"
+        />
       </div>
 
       {/* Categorized Risk Factors */}

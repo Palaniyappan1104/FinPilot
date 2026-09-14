@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 import { FundamentalReportSection } from '../../types';
+import { MetricCard } from '../common/MetricCard';
 
 interface FundamentalViewProps {
   data?: FundamentalReportSection;
@@ -18,6 +19,38 @@ export const FundamentalView: React.FC<FundamentalViewProps> = ({
       </div>
     );
   }
+
+  const valuationMetrics = [
+    { label: 'P/E Ratio (TTM)', value: `${data.pe_ratio.toFixed(1)}x` },
+    { label: 'P/B Multiple', value: `${data.pb_ratio.toFixed(1)}x` },
+    { label: 'EV / EBITDA', value: `${data.ev_ebitda.toFixed(1)}x` },
+    { label: 'Free Cash Flow', value: data.free_cash_flow },
+  ];
+
+  const marginMetrics = [
+    { label: 'Gross Margin', value: `${data.gross_margin_pct.toFixed(1)}%` },
+    { label: 'Operating Margin', value: `${data.operating_margin_pct.toFixed(1)}%` },
+    { label: 'Net Profit Margin', value: `${data.net_margin_pct.toFixed(1)}%` },
+    { label: 'Return on Equity (ROE)', value: `${data.roe_pct.toFixed(1)}%` },
+  ];
+
+  const solvencyMetrics = [
+    {
+      label: 'Debt-to-Equity',
+      value: data.debt_to_equity.toFixed(2),
+      valueClassName: 'text-base font-bold text-slate-800 mt-0.5',
+    },
+    {
+      label: 'Current Ratio',
+      value: `${data.current_ratio.toFixed(2)}x`,
+      valueClassName: 'text-base font-bold text-slate-800 mt-0.5',
+    },
+    {
+      label: 'YoY Revenue Growth',
+      value: `+${data.revenue_growth_yoy_pct.toFixed(1)}%`,
+      valueClassName: 'text-base font-bold text-emerald-700 mt-0.5',
+    },
+  ];
 
   return (
     <div
@@ -45,38 +78,9 @@ export const FundamentalView: React.FC<FundamentalViewProps> = ({
           Valuation Multiples
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              P/E Ratio (TTM)
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.pe_ratio.toFixed(1)}x
-            </div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              P/B Multiple
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.pb_ratio.toFixed(1)}x
-            </div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              EV / EBITDA
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.ev_ebitda.toFixed(1)}x
-            </div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              Free Cash Flow
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.free_cash_flow}
-            </div>
-          </div>
+          {valuationMetrics.map((m) => (
+            <MetricCard key={m.label} label={m.label} value={m.value} size="md" />
+          ))}
         </div>
       </div>
 
@@ -86,67 +90,23 @@ export const FundamentalView: React.FC<FundamentalViewProps> = ({
           Margins & Returns
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              Gross Margin
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.gross_margin_pct.toFixed(1)}%
-            </div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              Operating Margin
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.operating_margin_pct.toFixed(1)}%
-            </div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              Net Profit Margin
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.net_margin_pct.toFixed(1)}%
-            </div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase">
-              Return on Equity (ROE)
-            </span>
-            <div className="text-lg font-black text-slate-900 mt-0.5">
-              {data.roe_pct.toFixed(1)}%
-            </div>
-          </div>
+          {marginMetrics.map((m) => (
+            <MetricCard key={m.label} label={m.label} value={m.value} size="md" />
+          ))}
         </div>
       </div>
 
       {/* Solvency & Growth */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase">
-            Debt-to-Equity
-          </span>
-          <div className="text-base font-bold text-slate-800 mt-0.5">
-            {data.debt_to_equity.toFixed(2)}
-          </div>
-        </div>
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase">
-            Current Ratio
-          </span>
-          <div className="text-base font-bold text-slate-800 mt-0.5">
-            {data.current_ratio.toFixed(2)}x
-          </div>
-        </div>
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase">
-            YoY Revenue Growth
-          </span>
-          <div className="text-base font-bold text-emerald-700 mt-0.5">
-            +{data.revenue_growth_yoy_pct.toFixed(1)}%
-          </div>
-        </div>
+        {solvencyMetrics.map((m) => (
+          <MetricCard
+            key={m.label}
+            label={m.label}
+            value={m.value}
+            valueClassName={m.valueClassName}
+            size="md"
+          />
+        ))}
       </div>
 
       {/* Summary Narrative */}

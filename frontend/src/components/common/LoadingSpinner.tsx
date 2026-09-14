@@ -5,18 +5,33 @@ interface LoadingSpinnerProps {
   label?: string;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  inline?: boolean;
 }
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   label = 'Loading research data...',
   size = 'md',
   className = '',
+  inline = false,
 }) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-6 h-6',
     lg: 'w-8 h-8',
   }[size];
+
+  if (inline) {
+    return (
+      <div
+        role="status"
+        aria-label={label}
+        className={`inline-flex items-center space-x-2 text-slate-500 ${className}`}
+      >
+        <Loader2 className={`${sizeClasses} animate-spin text-slate-600 flex-shrink-0`} />
+        {label && <span className="text-xs font-medium text-slate-600">{label}</span>}
+      </div>
+    );
+  }
 
   return (
     <div

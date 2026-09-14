@@ -13,13 +13,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex bg-slate-50 text-slate-900 font-sans antialiased">
       {/* Desktop Persistent Sidebar */}
-      <div className="hidden md:flex md:flex-shrink-0">
+      <div className="hidden md:flex md:flex-shrink-0 print:hidden">
         <Sidebar />
       </div>
 
       {/* Mobile Drawer Backdrop & Drawer */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
+        <div className="fixed inset-0 z-50 md:hidden flex print:hidden">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
@@ -35,14 +35,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       )}
 
       {/* Main Column */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
+      <div className="flex-1 flex flex-col min-w-0 print:block print:w-full">
+        <div className="print:hidden">
+          <Header onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
+        </div>
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto overflow-y-auto print:p-0 print:m-0 print:max-w-none print:w-full print:overflow-visible">
           {children}
         </main>
 
-        <FooterDisclaimer />
+        <div className="print:hidden">
+          <FooterDisclaimer />
+        </div>
       </div>
     </div>
   );

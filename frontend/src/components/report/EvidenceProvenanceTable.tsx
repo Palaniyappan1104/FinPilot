@@ -1,6 +1,7 @@
 import React from 'react';
 import { Database, Link } from 'lucide-react';
 import { AggregatedEvidenceItem } from '../../types';
+import { EmptyState } from '../common/EmptyState';
 
 interface EvidenceProvenanceTableProps {
   evidenceList: AggregatedEvidenceItem[];
@@ -13,9 +14,12 @@ export const EvidenceProvenanceTable: React.FC<EvidenceProvenanceTableProps> = (
 }) => {
   if (!evidenceList || evidenceList.length === 0) {
     return (
-      <div className="p-6 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200">
-        No evidence items recorded.
-      </div>
+      <EmptyState
+        title="No Evidence Items Recorded"
+        description="No direct evidence claims or grounded calculation sources have been compiled."
+        icon={<Database className="w-6 h-6 text-slate-500" />}
+        className={className}
+      />
     );
   }
 
@@ -29,7 +33,7 @@ export const EvidenceProvenanceTable: React.FC<EvidenceProvenanceTableProps> = (
           <Database className="w-5 h-5 text-emerald-600" />
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              Evidence & Grounded Sources Traceability (Phase 16.9.2)
+              Evidence & Grounded Sources Traceability
             </h3>
             <p className="text-xs text-slate-500">
               Direct linkage between claims and specialist calculation tools / regulatory filings

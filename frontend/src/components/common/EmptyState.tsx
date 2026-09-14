@@ -8,6 +8,7 @@ interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   className?: string;
+  testId?: string;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -17,9 +18,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
   className = '',
+  testId,
 }) => {
   return (
     <div
+      data-testid={testId}
       className={`flex flex-col items-center justify-center text-center p-8 bg-white border border-dashed border-slate-300 rounded-xl ${className}`}
     >
       <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mb-3">

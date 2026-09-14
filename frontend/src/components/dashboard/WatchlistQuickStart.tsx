@@ -1,6 +1,6 @@
-import React from 'react';
-import { TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
-import { MOCK_COMPANIES } from '../../services/mockData';
+import React, { useEffect, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { apiService } from '../../services/api';
 import { CompanyInfo } from '../../types';
 
 interface WatchlistQuickStartProps {
@@ -12,7 +12,19 @@ export const WatchlistQuickStart: React.FC<WatchlistQuickStartProps> = ({
   onSelectCompany,
   className = '',
 }) => {
-  const companies = Object.values(MOCK_COMPANIES);
+  const [companies, setCompanies] = useState<CompanyInfo[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    apiService.searchCompanies('').then((data) => {
+      if (active) {
+        setCompanies(data.slice(0, 5));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div
@@ -30,8 +42,6 @@ export const WatchlistQuickStart: React.FC<WatchlistQuickStartProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {companies.map((comp) => {
-          const isPositive = comp.change >= 0;
-
           return (
             <div
               key={comp.ticker}
@@ -43,18 +53,8 @@ export const WatchlistQuickStart: React.FC<WatchlistQuickStartProps> = ({
                   <span className="font-mono text-xs font-bold text-slate-900 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
                     {comp.ticker}
                   </span>
-                  <span
-                    className={`text-[11px] font-semibold flex items-center ${
-                      isPositive ? 'text-emerald-600' : 'text-rose-600'
-                    }`}
-                  >
-                    {isPositive ? (
-                      <TrendingUp className="w-3 h-3 mr-0.5" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3 mr-0.5" />
-                    )}
-                    {isPositive ? '+' : ''}
-                    {comp.changePercent}%
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                    Tracked
                   </span>
                 </div>
 
@@ -62,9 +62,8 @@ export const WatchlistQuickStart: React.FC<WatchlistQuickStartProps> = ({
                   <div className="text-xs font-bold text-slate-800 truncate">
                     {comp.name}
                   </div>
-                  <div className="text-sm font-black text-slate-900 mt-0.5">
-                    {comp.currency === 'INR' ? '₹' : '$'}
-                    {comp.price.toLocaleString()}
+                  <div className="text-[11px] text-slate-400 mt-1 truncate">
+                    {comp.sector}
                   </div>
                 </div>
               </div>
@@ -74,7 +73,7 @@ export const WatchlistQuickStart: React.FC<WatchlistQuickStartProps> = ({
                 onClick={() => onSelectCompany(comp)}
                 className="mt-3 w-full py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-semibold border border-slate-200 flex items-center justify-center transition-colors"
               >
-                <span>Research {comp.ticker}</span>
+                <span>Analyze {comp.ticker}</span>
                 <ArrowRight className="w-3 h-3 ml-1 text-slate-400" />
               </button>
             </div>

@@ -19,13 +19,13 @@ export const ReportView: React.FC<ReportViewProps> = ({
   className = '',
 }) => {
   return (
-    <div data-testid="report-view" className={`space-y-6 ${className}`}>
+    <div data-testid="report-view" className={`space-y-6 print:space-y-4 ${className}`}>
       {/* Back button if passed */}
       {onBack && (
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors print:hidden"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-1" />
           Back to Reports Overview
@@ -49,7 +49,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
           <div className="flex items-center space-x-2 pb-2 border-b border-slate-100">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <h3 className="text-base font-bold text-slate-900">
-              Core Analytical Reasons (Phase 12.1.1 #12)
+              Core Analytical Reasons
             </h3>
           </div>
           <ul className="space-y-2 text-xs text-slate-700">

@@ -23,7 +23,7 @@ export const CriticalRisksSection: React.FC<CriticalRisksSectionProps> = ({
         </div>
         <div>
           <h3 className="text-base font-bold text-slate-900">
-            Critical Risk Factors & Adverse Scenarios (Phase 16.9.3)
+            Critical Risk Factors & Adverse Scenarios
           </h3>
           <p className="text-xs text-slate-500">
             Top investment risks that could invalidate the positive thesis

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, ShieldCheck } from 'lucide-react';
 import { CompanyInfo } from '../../types';
+import { MetricCard } from '../common/MetricCard';
 
 interface CompanyOverviewCardProps {
   company: CompanyInfo;
@@ -74,32 +75,26 @@ export const CompanyOverviewCard: React.FC<CompanyOverviewCardProps> = ({
 
       {/* Key Financial Multiples Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100 text-xs">
-        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-          <span className="text-slate-400 block text-[11px]">Market Cap</span>
-          <span className="font-bold text-slate-800 text-sm mt-0.5 block">
-            {company.marketCap}
-          </span>
-        </div>
-        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-          <span className="text-slate-400 block text-[11px]">P/E (TTM)</span>
-          <span className="font-bold text-slate-800 text-sm mt-0.5 block">
-            {company.peRatio}x
-          </span>
-        </div>
-        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-          <span className="text-slate-400 block text-[11px]">52-Week High</span>
-          <span className="font-bold text-slate-800 text-sm mt-0.5 block">
-            {company.currency === 'INR' ? '₹' : '$'}
-            {company.fiftyTwoWeekHigh.toLocaleString()}
-          </span>
-        </div>
-        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-          <span className="text-slate-400 block text-[11px]">52-Week Low</span>
-          <span className="font-bold text-slate-800 text-sm mt-0.5 block">
-            {company.currency === 'INR' ? '₹' : '$'}
-            {company.fiftyTwoWeekLow.toLocaleString()}
-          </span>
-        </div>
+        <MetricCard label="Market Cap" value={company.marketCap} size="sm" />
+        <MetricCard label="P/E (TTM)" value={`${company.peRatio}x`} size="sm" />
+        <MetricCard
+          label="52-Week High"
+          value={
+            company.fiftyTwoWeekHigh
+              ? `${company.currency === 'INR' ? '₹' : '$'}${company.fiftyTwoWeekHigh.toLocaleString()}`
+              : 'N/A'
+          }
+          size="sm"
+        />
+        <MetricCard
+          label="52-Week Low"
+          value={
+            company.fiftyTwoWeekLow
+              ? `${company.currency === 'INR' ? '₹' : '$'}${company.fiftyTwoWeekLow.toLocaleString()}`
+              : 'N/A'
+          }
+          size="sm"
+        />
       </div>
 
       {/* Action footer */}

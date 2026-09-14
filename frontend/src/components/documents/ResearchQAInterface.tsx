@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, BookOpen, Quote, Loader2 } from 'lucide-react';
 import { ResearchQAResult } from '../../types';
-import { mockApi } from '../../services/mockApi';
+import { apiService, ApiError } from '../../services/api';
 
 interface ResearchQAInterfaceProps {
   className?: string;
@@ -10,21 +10,26 @@ interface ResearchQAInterfaceProps {
 
 export const ResearchQAInterface: React.FC<ResearchQAInterfaceProps> = ({
   className = '',
-  defaultTicker = 'AAPL',
+  defaultTicker = '',
 }) => {
   const [query, setQuery] = useState('');
   const [ticker, setTicker] = useState(defaultTicker);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ResearchQAResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isLoading) return;
 
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      const data = await mockApi.queryResearchDocuments(query, ticker);
+      const data = await apiService.queryResearchDocuments(query, ticker);
       setResult(data);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Research query failed. Please verify document availability.';
+      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +81,7 @@ export const ResearchQAInterface: React.FC<ResearchQAInterfaceProps> = ({
           <button
             type="submit"
             disabled={!query.trim() || isLoading}
-            className="px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 disabled:opacity-40 text-white text-xs font-semibold flex items-center justify-center transition-colors shadow-sm"
+            className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-semibold flex items-center justify-center transition-colors shadow-sm"
           >
             {isLoading ? (
               <>
@@ -108,6 +113,12 @@ export const ResearchQAInterface: React.FC<ResearchQAInterfaceProps> = ({
           ))}
         </div>
       </form>
+
+      {errorMessage && (
+        <div data-testid="research-qa-error" className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800">
+          {errorMessage}
+        </div>
+      )}
 
       {/* Answer & Citations Card */}
       {result && (

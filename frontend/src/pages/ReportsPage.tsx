@@ -2,30 +2,48 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, Printer } from 'lucide-react';
 import { ReportView } from '../components/report/ReportView';
-import { mockApi } from '../services/mockApi';
+import { apiService, ApiError } from '../services/api';
 import { useApp } from '../context/AppContext';
 import { FinalReport } from '../types';
+import { EmptyState } from '../components/common/EmptyState';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 export const ReportsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { activeReport, setActiveReport } = useApp();
+  const { activeReport, setActiveReport, recentAnalyses } = useApp();
 
   const [report, setReport] = useState<FinalReport | null>(activeReport);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const targetReportId = id || activeReport?.report_id || 'rep-aapl-001';
+  const targetReportId = id || activeReport?.report_id;
+  const availableReports = recentAnalyses.filter((a) => Boolean(a.report_id));
 
   useEffect(() => {
     let active = true;
+    if (!targetReportId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    mockApi.getReport(targetReportId).then((data: FinalReport) => {
-      if (active) {
-        setReport(data);
-        setActiveReport(data);
-        setLoading(false);
-      }
-    });
+    setErrorMessage(null);
+    apiService
+      .getReport(targetReportId)
+      .then((data: FinalReport) => {
+        if (active) {
+          setReport(data);
+          setActiveReport(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          const msg = err instanceof ApiError ? err.message : `Failed to load report '${targetReportId}'.`;
+          setErrorMessage(msg);
+          setLoading(false);
+        }
+      });
     return () => {
       active = false;
     };
@@ -35,18 +53,39 @@ export const ReportsPage: React.FC = () => {
     navigate(`/reports/${newId}`);
   };
 
-  if (loading || !report) {
+  if (loading) {
     return (
-      <div className="p-16 text-center text-xs text-slate-500">
-        Loading investment research report...
+      <LoadingSpinner
+        label="Loading investment research report..."
+        size="lg"
+        className="p-16"
+      />
+    );
+  }
+
+  if (errorMessage || !report) {
+    const isNoSelection = !targetReportId && !errorMessage;
+    return (
+      <div data-testid="report-error-card" className="max-w-md mx-auto">
+        <EmptyState
+          title={isNoSelection ? 'No Investment Report Selected' : 'Report Unavailable'}
+          description={
+            isNoSelection
+              ? 'No investment report selected. Launch an analysis from New Analysis or select a completed report.'
+              : (errorMessage || 'Report not found.')
+          }
+          icon={<FileText className="w-6 h-6 text-slate-500" />}
+          actionLabel={isNoSelection ? 'Start New Analysis' : 'Return to Dashboard'}
+          onAction={() => navigate(isNoSelection ? '/analysis/new' : '/')}
+        />
       </div>
     );
   }
 
   return (
-    <div data-testid="reports-page" className="space-y-6">
+    <div data-testid="reports-page" className="space-y-6 print:space-y-4 print:p-0">
       {/* Top action bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3 print:hidden">
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
             <FileText className="w-5 h-5" />
@@ -62,15 +101,20 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Report switcher if multiple */}
-          <select
-            value={report.report_id}
-            onChange={(e) => handleSelectOtherReport(e.target.value)}
-            className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="rep-aapl-001">Apple Inc. (AAPL)</option>
-            <option value="rep-infy-002">Infosys Ltd. (INFY)</option>
-          </select>
+          {/* Report switcher if multiple available */}
+          {availableReports.length > 1 && (
+            <select
+              value={report.report_id}
+              onChange={(e) => handleSelectOtherReport(e.target.value)}
+              className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              {availableReports.map((item) => (
+                <option key={item.report_id} value={item.report_id}>
+                  {item.company_name} ({item.ticker})
+                </option>
+              ))}
+            </select>
+          )}
 
           <button
             type="button"

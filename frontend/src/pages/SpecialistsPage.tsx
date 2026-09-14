@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { FileText, Layers } from 'lucide-react';
 import { SpecialistTabContainer } from '../components/specialists/SpecialistTabContainer';
 import { useApp } from '../context/AppContext';
-import { mockApi } from '../services/mockApi';
+import { apiService } from '../services/api';
 import { FinalReport, SpecialistType } from '../types';
+import { EmptyState } from '../components/common/EmptyState';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 export const SpecialistsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -16,28 +18,54 @@ export const SpecialistsPage: React.FC = () => {
 
   const initialTab = (searchParams.get('tab') as SpecialistType) || 'technical';
 
+  const targetReportId = activeAnalysis?.reportId;
+
   useEffect(() => {
     let active = true;
-    if (!report) {
+    if (!report && targetReportId) {
       setLoading(true);
-      const targetReportId = activeAnalysis?.reportId || 'rep-aapl-001';
-      mockApi.getReport(targetReportId).then((data: FinalReport) => {
-        if (active) {
-          setReport(data);
-          setActiveReport(data);
-          setLoading(false);
-        }
-      });
+      apiService
+        .getReport(targetReportId)
+        .then((data: FinalReport) => {
+          if (active) {
+            setReport(data);
+            setActiveReport(data);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setLoading(false);
+          }
+        });
+    } else if (!targetReportId && !report) {
+      setLoading(false);
     }
     return () => {
       active = false;
     };
-  }, [report, activeAnalysis, setActiveReport]);
+  }, [report, targetReportId, setActiveReport]);
 
-  if (loading || !report) {
+  if (loading) {
     return (
-      <div className="p-12 text-center text-xs text-slate-500">
-        Loading specialist data...
+      <LoadingSpinner
+        label="Loading specialist data..."
+        size="lg"
+        className="p-12"
+      />
+    );
+  }
+
+  if (!report) {
+    return (
+      <div data-testid="specialists-page" className="max-w-md mx-auto">
+        <EmptyState
+          title="No Active Analysis Dossier"
+          description="Specialist insights are available once an equity analysis is initiated or a report is selected."
+          icon={<Layers className="w-6 h-6 text-slate-500" />}
+          actionLabel="Start New Analysis"
+          onAction={() => navigate('/analysis/new')}
+        />
       </div>
     );
   }

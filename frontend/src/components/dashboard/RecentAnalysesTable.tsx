@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Layers } from 'lucide-react';
 import { AnalysisSummary } from '../../types';
 import { Badge } from '../common/Badge';
+import { EmptyState } from '../common/EmptyState';
 
 interface RecentAnalysesTableProps {
   analyses: AnalysisSummary[];
@@ -17,11 +18,14 @@ export const RecentAnalysesTable: React.FC<RecentAnalysesTableProps> = ({
 
   if (!analyses || analyses.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-        <p className="text-xs text-slate-500">
-          No research analyses completed yet. Launch a new analysis from the query box.
-        </p>
-      </div>
+      <EmptyState
+        title="No Research Analyses Yet"
+        description="No research analyses completed yet. Launch a new analysis from the query box."
+        icon={<FileText className="w-6 h-6 text-slate-500" />}
+        actionLabel="Start New Analysis"
+        onAction={() => navigate('/analysis/new')}
+        className={className}
+      />
     );
   }
 

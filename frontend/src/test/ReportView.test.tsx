@@ -20,7 +20,7 @@ describe('Final Investment Report View (Phase 16.9)', () => {
 
     // Core analytical reasons
     expect(
-      screen.getByText(/Core Analytical Reasons \(Phase 12.1.1 #12\)/i),
+      screen.getByText(/Core Analytical Reasons/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -35,7 +35,7 @@ describe('Final Investment Report View (Phase 16.9)', () => {
     expect(screen.getByTestId('critical-risks-section')).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Critical Risk Factors & Adverse Scenarios \(Phase 16.9.3\)/i,
+        /Critical Risk Factors & Adverse Scenarios/i,
       ),
     ).toBeInTheDocument();
     expect(
@@ -51,7 +51,7 @@ describe('Final Investment Report View (Phase 16.9)', () => {
     expect(screen.getByTestId('evidence-provenance-table')).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Evidence & Grounded Sources Traceability \(Phase 16.9.2\)/i,
+        /Evidence & Grounded Sources/i,
       ),
     ).toBeInTheDocument();
     expect(screen.getByText('SEC Edgar 10-Q Filing')).toBeInTheDocument();

@@ -32,9 +32,20 @@ export const DashboardPage: React.FC = () => {
     navigate(`/analysis/new?ticker=${comp.ticker}`);
   };
 
-  const completedCount = recentAnalyses.filter(
+  const completedAnalyses = recentAnalyses.filter(
     (a: AnalysisSummary) => a.status === 'completed',
-  ).length;
+  );
+  const completedCount = completedAnalyses.length;
+
+  const validConfidenceItems = completedAnalyses.filter((a) => a.confidence > 0);
+  const avgConfidence =
+    validConfidenceItems.length > 0
+      ? `${(
+          (validConfidenceItems.reduce((acc, curr) => acc + curr.confidence, 0) /
+            validConfidenceItems.length) *
+          100
+        ).toFixed(1)}%`
+      : 'Not available yet';
 
   return (
     <div data-testid="dashboard-page" className="space-y-8">
@@ -108,31 +119,31 @@ export const DashboardPage: React.FC = () => {
         <StatCard
           label="Analyses Completed"
           value={completedCount}
-          change="+3 this week"
-          isPositive={true}
+          change={completedCount > 0 ? `${completedCount} total` : undefined}
+          isPositive={completedCount > 0}
           icon={<TrendingUp className="w-5 h-5" />}
           subtitle="Multi-agent dossiers generated"
         />
         <StatCard
           label="Avg Agent Confidence"
-          value="86.5%"
-          change="High Statistical Validity"
-          isPositive={true}
+          value={avgConfidence}
+          change={validConfidenceItems.length > 0 ? 'Empirical aggregate' : undefined}
+          isPositive={validConfidenceItems.length > 0}
           icon={<Award className="w-5 h-5 text-emerald-600" />}
-          subtitle="Across 5 specialist domains"
+          subtitle="Across specialist domains"
         />
         <StatCard
           label="Indexed Vault Filings"
-          value={documents.length || 4}
-          change="Grounding Active"
-          isPositive={true}
+          value={documents.length}
+          change={documents.length > 0 ? 'Grounding Active' : 'Vault Ready'}
+          isPositive={documents.length > 0}
           icon={<FolderLock className="w-5 h-5" />}
           subtitle="ChromaDB vector embeddings"
         />
         <StatCard
           label="Safety Guardrails"
-          value="Active"
-          change="Non-Advisory Enforced"
+          value="Enforced"
+          change="Non-Advisory"
           isPositive={true}
           icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />}
           subtitle="No fabricated figures or trading bot advice"

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Send, Bot, User, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ClarificationPromptCard } from './ClarificationPromptCard';
-import { mockApi } from '../../services/mockApi';
+import { apiService, ApiError } from '../../services/api';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 interface ChatWindowProps {
   className?: string;
@@ -16,6 +17,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ className = '' }) => {
     addChatMessage,
     profile,
     updateProfile,
+    activeAnalysis,
     setActiveAnalysis,
   } = useApp();
 
@@ -48,15 +50,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ className = '' }) => {
     });
 
     try {
-      // 2. Call mockApi
-      const result = await mockApi.sendChatMessage(query, profile);
+      // 2. Call apiService
+      const result = await apiService.sendChatMessage(query, profile);
       addChatMessage(result.message);
 
       if (result.analysisId) {
+        const activeTicker = profile.ticker || 'EQUITY';
         setActiveAnalysis({
           analysisId: result.analysisId,
-          ticker: profile.ticker || 'AAPL',
-          companyName: profile.target_company || 'Apple Inc.',
+          ticker: activeTicker,
+          companyName: profile.target_company || activeTicker,
           status: 'running',
           progressPercent: 35,
           progressStage: 'Specialist Agents executing concurrent research',
@@ -64,17 +67,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ className = '' }) => {
             technical: 'running',
             fundamental: 'running',
             news: 'running',
-            research: 'pending',
-            risk: 'pending',
+            research: 'running',
+            risk: 'running',
           },
           reportId: result.reportId,
         });
       }
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof ApiError ? err.message : 'Failed to process conversational query. Please try again.';
       addChatMessage({
         id: `err-${Date.now()}`,
         role: 'system',
-        content: 'Failed to process conversational query. Please try again.',
+        content: errMsg,
         timestamp: new Date().toISOString(),
       });
     } finally {
@@ -93,9 +97,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ className = '' }) => {
 
     setIsSubmitting(true);
     try {
-      const result = await mockApi.submitClarification(
+      const activeTicker = profile.ticker || 'EQUITY';
+      const result = await apiService.submitClarification(
         answers,
-        profile.ticker || 'AAPL',
+        activeTicker,
+        activeAnalysis?.analysisId,
       );
 
       addChatMessage({
@@ -112,17 +118,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ className = '' }) => {
 
       setActiveAnalysis({
         analysisId: result.analysisId,
-        ticker: profile.ticker || 'AAPL',
-        companyName: profile.target_company || 'Apple Inc.',
+        ticker: activeTicker,
+        companyName: profile.target_company || activeTicker,
         status: 'running',
         progressPercent: 50,
         progressStage: 'Specialist Agents executing concurrent research',
         specialistStatuses: {
-          technical: 'completed',
+          technical: 'running',
           fundamental: 'running',
           news: 'running',
           research: 'running',
-          risk: 'pending',
+          risk: 'running',
         },
         reportId: result.reportId,
       });
@@ -243,9 +249,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ className = '' }) => {
           </div>
         ))}
         {isSubmitting && (
-          <div className="flex items-center space-x-2 text-xs text-slate-400 py-1">
-            <Bot className="w-4 h-4 text-emerald-600 animate-spin" />
-            <span>Agent synthesizing response...</span>
+          <div className="py-1">
+            <LoadingSpinner
+              inline
+              size="sm"
+              label="Agent synthesizing response..."
+              className="text-xs text-slate-400"
+            />
           </div>
         )}
         <div ref={messagesEndRef} />

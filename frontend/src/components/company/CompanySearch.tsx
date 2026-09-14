@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { CompanyInfo } from '../../types';
-import { mockApi } from '../../services/mockApi';
+import { apiService } from '../../services/api';
 
 interface CompanySearchProps {
   onSelectCompany: (company: CompanyInfo) => void;
@@ -25,7 +25,7 @@ export const CompanySearch: React.FC<CompanySearchProps> = ({
     const fetchResults = async () => {
       setIsLoading(true);
       try {
-        const companies = await mockApi.searchCompanies(searchTerm);
+        const companies = await apiService.searchCompanies(searchTerm);
         if (active) {
           setResults(companies);
         }
@@ -122,22 +122,30 @@ export const CompanySearch: React.FC<CompanySearchProps> = ({
               </div>
 
               <div className="text-right">
-                <div className="text-sm font-bold text-slate-900">
-                  {comp.currency === 'INR' ? '₹' : '$'}
-                  {comp.price.toLocaleString()}
-                </div>
-                <div
-                  className={`text-xs font-semibold flex items-center justify-end ${
-                    comp.change >= 0 ? 'text-emerald-600' : 'text-rose-600'
-                  }`}
-                >
-                  {comp.change >= 0 ? (
-                    <ArrowUpRight className="w-3 h-3 mr-0.5" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3 mr-0.5" />
-                  )}
-                  {comp.changePercent}%
-                </div>
+                {comp.price > 0 ? (
+                  <>
+                    <div className="text-sm font-bold text-slate-900">
+                      {comp.currency === 'INR' ? '₹' : '$'}
+                      {comp.price.toLocaleString()}
+                    </div>
+                    <div
+                      className={`text-xs font-semibold flex items-center justify-end ${
+                        comp.change >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                      }`}
+                    >
+                      {comp.change >= 0 ? (
+                        <ArrowUpRight className="w-3 h-3 mr-0.5" />
+                      ) : (
+                        <ArrowDownRight className="w-3 h-3 mr-0.5" />
+                      )}
+                      {comp.changePercent}%
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                    Analyze
+                  </span>
+                )}
               </div>
             </button>
           ))}

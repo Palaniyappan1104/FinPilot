@@ -56,27 +56,34 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               {selectedCompany.ticker}
             </span>
             <span className="text-slate-400">|</span>
-            <span>
-              {selectedCompany.currency === 'INR' ? '₹' : '$'}
-              {selectedCompany.price.toLocaleString()}
-            </span>
-            <span
-              className={`font-semibold ${
-                selectedCompany.change >= 0
-                  ? 'text-emerald-600'
-                  : 'text-rose-600'
-              }`}
-            >
-              {selectedCompany.change >= 0 ? '+' : ''}
-              {selectedCompany.changePercent}%
-            </span>
+            {selectedCompany.price > 0 ? (
+              <>
+                <span>
+                  {selectedCompany.currency === 'INR' ? '₹' : '$'}
+                  {selectedCompany.price.toLocaleString()}
+                </span>
+                <span
+                  className={`font-semibold ${
+                    selectedCompany.change >= 0
+                      ? 'text-emerald-600'
+                      : 'text-rose-600'
+                  }`}
+                >
+                  {selectedCompany.change >= 0 ? '+' : ''}
+                  {selectedCompany.changePercent}%
+                </span>
+              </>
+            ) : (
+              <span className="text-slate-400 text-[11px]">
+                Market data unavailable
+              </span>
+            )}
           </div>
         )}
 
-        {/* Phase 16 Mock Notice Badge */}
-        <div className="flex items-center text-[10px] sm:text-[11px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md">
+        <div className="flex items-center text-[10px] sm:text-[11px] font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md">
           <Info className="w-3.5 h-3.5 text-slate-400 mr-1" />
-          <span>Phase 16 UI • Mock</span>
+          <span>FinPilot Platform</span>
         </div>
 
         <div className="hidden sm:flex items-center text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">

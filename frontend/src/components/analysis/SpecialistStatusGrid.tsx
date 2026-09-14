@@ -95,7 +95,7 @@ export const SpecialistStatusGrid: React.FC<SpecialistStatusGridProps> = ({
     >
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Autonomous Specialist Execution (Phase 16.6.2)
+          Autonomous Specialist Execution (Pipeline Stage Status)
         </h3>
         <span className="text-[11px] text-slate-400">
           Supervised by Chief Investment Officer (CIO) Agent
