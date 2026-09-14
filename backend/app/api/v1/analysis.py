@@ -1,12 +1,12 @@
-"""FastAPI routes for FinPilot End-to-End Analysis and Reports (Phase 15.1).
+"""FastAPI routes for FinPilot End-to-End Analysis and Reports (Phase 15.1 & 15.2).
 
-Implements Phase 15.1 API endpoints:
-- POST /api/v1/chat: Conversational query endpoint (15.1.2)
-- POST /api/v1/analysis: Company analysis endpoint (15.1.3)
-- POST /api/v1/clarification: Clarification answer submission (15.1.4)
-- POST /api/v1/research/query: Research query against documents (15.1.6)
-- GET  /api/v1/analysis/{analysis_id}/status: Analysis status polling (15.1.7)
-- GET  /api/v1/reports/{report_id}: Report retrieval by ID (15.1.8)
+Implements Phase 15.1 API endpoints with Phase 15.2 Request/Response contracts:
+- POST /api/v1/chat: Conversational query endpoint (15.1.2, 15.2.1, 15.2.2)
+- POST /api/v1/analysis: Company analysis endpoint (15.1.3, 15.2.1, 15.2.2)
+- POST /api/v1/clarification: Clarification answer submission (15.1.4, 15.2.1, 15.2.2)
+- POST /api/v1/research/query: Research query against documents (15.1.6, 15.2.1)
+- GET  /api/v1/analysis/{analysis_id}/status: Analysis status polling (15.1.7, 15.2.1)
+- GET  /api/v1/reports/{report_id}: Report retrieval by ID (15.1.8, 15.2.1)
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ from app.core.logging import get_logger
 from app.models.api import (
     AnalysisExecutionResponse,
     AnalysisStatusResponse,
+    APIErrorEnvelope,
     ChatQueryRequest,
     ClarificationSubmitRequest,
     CompanyAnalysisRequest,
@@ -41,6 +42,26 @@ logger = get_logger("app.api.v1.analysis")
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
+# Standard OpenAPI Response Schemas for Error States (15.2.1, 15.2.2)
+# ---------------------------------------------------------------------------
+ERROR_400_RESPONSE = {
+    "model": APIErrorEnvelope,
+    "description": "Malformed request parameters or invalid identifier format.",
+}
+ERROR_404_RESPONSE = {
+    "model": APIErrorEnvelope,
+    "description": "Requested resource not found.",
+}
+ERROR_422_RESPONSE = {
+    "model": APIErrorEnvelope,
+    "description": "Validation error in request parameters or body payload.",
+}
+ERROR_500_RESPONSE = {
+    "model": APIErrorEnvelope,
+    "description": "Unexpected internal server execution failure.",
+}
+
+# ---------------------------------------------------------------------------
 # Ephemeral API-Layer Status & Report Registry (Phase 15.1 requirement)
 # Bounded to recent executions within the running process (no fake DB layer).
 # ---------------------------------------------------------------------------
@@ -48,6 +69,32 @@ _RECENT_ANALYSES: Dict[str, Dict[str, Any]] = {}
 _RECENT_REPORTS: Dict[str, FinalReport] = {}
 _REGISTRY_LOCK = threading.Lock()
 _MAX_STORED_ENTRIES = 200
+
+
+def _validate_uuid_param(param_value: str, param_name: str) -> str:
+    """Validate that a path parameter string conforms to a valid UUID format.
+
+    Args:
+        param_value: Raw string from path parameter.
+        param_name: Label used in user-facing error message.
+
+    Returns:
+        str: Normalized canonical UUID string.
+
+    Raises:
+        HTTPException: 400 Bad Request if param_value is not a valid UUID.
+    """
+    try:
+        parsed = uuid.UUID(param_value)
+        return str(parsed)
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid {param_name} format: '{param_value}'. "
+                "Expected a valid UUID."
+            ),
+        )
 
 
 def _store_analysis_record(
@@ -172,6 +219,10 @@ def _extract_response_from_state(
         "Clarification agents. Halts with clarification questions if missing "
         "constraints, or proceeds through the full pipeline to a completed report."
     ),
+    responses={
+        422: ERROR_422_RESPONSE,
+        500: ERROR_500_RESPONSE,
+    },
 )
 async def chat_query(
     request: ChatQueryRequest,
@@ -217,6 +268,10 @@ async def chat_query(
         "ticker and investor profile. Returns a structured FinalReport or "
         "clarification questions."
     ),
+    responses={
+        422: ERROR_422_RESPONSE,
+        500: ERROR_500_RESPONSE,
+    },
 )
 async def company_analysis(
     request: CompanyAnalysisRequest,
@@ -225,7 +280,7 @@ async def company_analysis(
     """Execute company investment analysis through the end-to-end graph."""
     analysis_id = str(uuid.uuid4())
     trace_id = request.trace_id or f"trace-{uuid.uuid4().hex[:12]}"
-    clean_ticker = request.ticker.strip().upper()
+    clean_ticker = request.ticker
 
     profile_dict = (
         request.investor_profile.model_dump(exclude_none=True)
@@ -272,6 +327,10 @@ async def company_analysis(
         "Submits answers to missing investor profile fields, resolving the "
         "clarification halt and continuing graph execution to full report completion."
     ),
+    responses={
+        422: ERROR_422_RESPONSE,
+        500: ERROR_500_RESPONSE,
+    },
 )
 async def submit_clarification(
     request: ClarificationSubmitRequest,
@@ -322,6 +381,10 @@ async def submit_clarification(
         "Submits a research query targeted at document filings and corporate "
         "disclosures, routing through the Research Analyst specialist."
     ),
+    responses={
+        422: ERROR_422_RESPONSE,
+        500: ERROR_500_RESPONSE,
+    },
 )
 async def research_query(
     request: ResearchQueryRequest,
@@ -330,7 +393,7 @@ async def research_query(
     """Execute research document query through the end-to-end graph."""
     analysis_id = str(uuid.uuid4())
     trace_id = request.trace_id or f"trace-{uuid.uuid4().hex[:12]}"
-    clean_ticker = request.ticker.strip().upper() if request.ticker else None
+    clean_ticker = request.ticker
 
     try:
         final_state = runner(
@@ -362,18 +425,26 @@ async def research_query(
     description=(
         "Polls the lifecycle execution status of an active or completed analysis."
     ),
+    responses={
+        400: ERROR_400_RESPONSE,
+        404: ERROR_404_RESPONSE,
+        422: ERROR_422_RESPONSE,
+        500: ERROR_500_RESPONSE,
+    },
 )
 async def get_analysis_status(
     analysis_id: str,
 ) -> AnalysisStatusResponse:
     """Retrieve status for a specified analysis session."""
+    valid_id = _validate_uuid_param(analysis_id, "analysis ID")
+
     with _REGISTRY_LOCK:
-        record = _RECENT_ANALYSES.get(analysis_id)
+        record = _RECENT_ANALYSES.get(valid_id)
 
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Analysis '{analysis_id}' not found.",
+            detail=f"Analysis '{valid_id}' not found.",
         )
 
     return AnalysisStatusResponse(
@@ -401,6 +472,12 @@ async def get_analysis_status(
         "Retrieves a completed report by ID. Supports 'format=json' (default), "
         "'format=markdown', and 'format=summary'."
     ),
+    responses={
+        400: ERROR_400_RESPONSE,
+        404: ERROR_404_RESPONSE,
+        422: ERROR_422_RESPONSE,
+        500: ERROR_500_RESPONSE,
+    },
 )
 async def get_report(
     report_id: str,
@@ -409,18 +486,20 @@ async def get_report(
     ),
 ) -> ReportRetrievalResponse:
     """Retrieve a completed report by ID in the requested format."""
+    valid_id = _validate_uuid_param(report_id, "report ID")
+
     with _REGISTRY_LOCK:
-        report = _RECENT_REPORTS.get(report_id)
+        report = _RECENT_REPORTS.get(valid_id)
 
     if report is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Report '{report_id}' not found.",
+            detail=f"Report '{valid_id}' not found.",
         )
 
     if format == "json":
         return ReportRetrievalResponse(
-            report_id=report_id,
+            report_id=valid_id,
             format="json",
             report=report,
             rendered_content=None,
@@ -428,7 +507,7 @@ async def get_report(
     elif format == "markdown":
         rendered = format_report_markdown(report)
         return ReportRetrievalResponse(
-            report_id=report_id,
+            report_id=valid_id,
             format="markdown",
             report=None,
             rendered_content=rendered,
@@ -436,7 +515,7 @@ async def get_report(
     else:  # summary
         rendered = format_report_text(report)
         return ReportRetrievalResponse(
-            report_id=report_id,
+            report_id=valid_id,
             format="summary",
             report=None,
             rendered_content=rendered,

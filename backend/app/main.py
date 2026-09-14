@@ -62,10 +62,21 @@ def create_application() -> FastAPI:
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         # Strip submitted input values from error details to avoid exposing
-        # sensitive inputs
-        sanitized = [
-            {k: v for k, v in err.items() if k != "input"} for err in exc.errors()
-        ]
+        # sensitive inputs, and stringify any exception objects in ctx
+        sanitized = []
+        for err in exc.errors():
+            clean_err = {}
+            for k, v in err.items():
+                if k == "input":
+                    continue
+                if k == "ctx" and isinstance(v, dict):
+                    clean_err[k] = {
+                        sub_k: str(sub_v) if isinstance(sub_v, Exception) else sub_v
+                        for sub_k, sub_v in v.items()
+                    }
+                else:
+                    clean_err[k] = v
+            sanitized.append(clean_err)
         logger.warning(
             "Validation error on %s %s (%d field(s))",
             request.method,
