@@ -1,14 +1,9 @@
 """Main FastAPI application entrypoint for FinPilot."""
 
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Load backend/.env
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
-
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +15,11 @@ from app.api.v1.health import HealthResponse, get_health
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.core.middleware import RequestLoggingMiddleware
+
+# Load backend/.env
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
 
 # Initialize application logging in a reliable order before components depend on it
 setup_logging()

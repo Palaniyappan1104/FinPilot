@@ -76,11 +76,7 @@ TECHNICAL_TOKENS = 1400
 FUNDAMENTAL_TOKENS = 1500
 NEWS_TOKENS = 1300
 RISK_TOKENS = 1500
-# Lowered from 6500: the synthesis prompt now targets ~1,800-2,400 words
-# (~2-3 pages) instead of ~4,000+, so 4096 tokens leaves comfortable
-# headroom without inviting truncated JSON. See _run_synthesis() for the
-# retry-on-truncation safety net.
-SYNTHESIS_TOKENS = int(os.getenv("SYNTHESIS_MAX_TOKENS", "4096"))
+SYNTHESIS_TOKENS = int(os.getenv("SYNTHESIS_MAX_TOKENS", "6500"))
 
 
 _NO_FABRICATION_RULE = (
@@ -120,20 +116,12 @@ def _generate_text(
     max_tokens: int = 2048,
     temperature: float = 0.4,
     model: Optional[str] = None,
-    json_mode: bool = False,
 ) -> str:
     """Call a Groq model and return plain text response.
 
     Falls back to the same call without ``temperature`` if the target model
     rejects that parameter, then to the specialist model if the requested
     model is unavailable on this account.
-
-    ``json_mode`` requests the model's native JSON object response mode
-    (Groq's OpenAI-compatible ``response_format={"type": "json_object"}``).
-    If the model/account rejects that parameter, calls transparently fall
-    back to a plain request relying on the system prompt's JSON instructions,
-    so behaviour for existing callers (which never pass json_mode=True) is
-    completely unchanged.
     """
 
     client = _get_groq_client()
@@ -144,38 +132,26 @@ def _generate_text(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    base: Dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-    }
-
-    attempts: List[Dict[str, Any]] = []
-    if json_mode:
-        attempts.append({
-            **base,
+    attempts: List[Dict[str, Any]] = [
+        {
+            "model": model,
+            "messages": messages,
             "temperature": temperature,
-            "response_format": {"type": "json_object"},
-        })
-        attempts.append({
-            **base,
-            "response_format": {"type": "json_object"},
-        })
-    attempts.append({**base, "temperature": temperature})
-    attempts.append(dict(base))
+            "max_tokens": max_tokens,
+        },
+        {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+        },
+    ]
     if model != SPECIALIST_MODEL:
-        fallback: Dict[str, Any] = {
+        attempts.append({
             "model": SPECIALIST_MODEL,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-        }
-        if json_mode:
-            attempts.append({
-                **fallback,
-                "response_format": {"type": "json_object"},
-            })
-        attempts.append(fallback)
+        })
 
     last_error: Optional[Exception] = None
     for kwargs in attempts:
@@ -229,7 +205,9 @@ def _rsi(values: List[float], period: int = 14) -> Optional[float]:
     return 100.0 - (100.0 / (1.0 + rs))
 
 
-def _macd(values: List[float]) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+def _macd(
+    values: List[float],
+) -> Tuple[Optional[float], Optional[float], Optional[float]]:
     if len(values) < 35:
         return None, None, None
     ema12 = _ema_series(values, 12)
@@ -280,28 +258,6 @@ def _fmt_big(value: Optional[float]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Ticker normalisation (fixes "$ITC: possibly delisted" style failures)
-# ---------------------------------------------------------------------------
-
-def _build_ticker_candidates(ticker: str) -> List[str]:
-    """Generate ticker variants to try against yfinance.
-
-    Already-qualified symbols (containing a '.') are tried as-is only, so
-    something like TCS.NS is never mangled into TCS.NS.NS. Unqualified
-    symbols are tried plain first (covers US/international tickers like
-    AAPL), then with the common Indian exchange suffixes, since instrument
-    resolution sometimes omits them for NSE/BSE-listed names (e.g. ITC
-    should resolve to ITC.NS).
-    """
-    t = (ticker or "").strip().upper()
-    if not t or t == "N/A":
-        return []
-    if "." in t:
-        return [t]
-    return [t, f"{t}.NS", f"{t}.BO"]
-
-
-# ---------------------------------------------------------------------------
 # Market data collection (yfinance = the single factual layer)
 # ---------------------------------------------------------------------------
 
@@ -310,12 +266,6 @@ def _fetch_market_data(ticker: str) -> Dict[str, Any]:
 
     Never raises: any failure is recorded in ``notes`` so downstream
     prompts can honestly declare the gap.
-
-    Tries several ticker candidates (see ``_build_ticker_candidates``) so
-    that an unqualified symbol like ``ITC`` still resolves to the correct
-    NSE/BSE listing (``ITC.NS``) instead of failing as "possibly delisted".
-    The candidate that actually returns usable price history becomes
-    ``data["ticker"]`` and is reused for fundamentals and headlines too.
     """
 
     data: Dict[str, Any] = {
@@ -327,8 +277,7 @@ def _fetch_market_data(ticker: str) -> Dict[str, Any]:
         "as_of": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
-    candidates = _build_ticker_candidates(ticker)
-    if not candidates:
+    if not ticker or ticker == "N/A":
         data["notes"].append("No ticker symbol could be resolved from the query.")
         return data
 
@@ -339,71 +288,52 @@ def _fetch_market_data(ticker: str) -> Dict[str, Any]:
         )
         return data
 
-    handle = None
-    closes: List[float] = []
-    volumes: List[float] = []
-    tried: List[str] = []
-
-    for candidate in candidates:
-        try:
-            h = yf.Ticker(candidate)
-            hist = h.history(period="1y", interval="1d")
-            c = [float(x) for x in hist["Close"].dropna().tolist()]
-            v = [float(x) for x in hist["Volume"].dropna().tolist()]
-        except Exception as exc:
-            tried.append(f"{candidate} (error: {exc})")
-            continue
-
-        tried.append(candidate)
-        if len(c) >= 30:
-            handle, closes, volumes = h, c, v
-            data["ticker"] = candidate
-            break
-
-    if handle is None:
-        # No candidate returned usable price history. Fall back to the
-        # first candidate's handle so fundamentals/headlines can still be
-        # attempted, and record exactly what was tried instead of crashing.
-        try:
-            handle = yf.Ticker(candidates[0])
-        except Exception as exc:
-            data["notes"].append(f"Could not open market data handle: {exc}")
-            return data
-        data["ticker"] = candidates[0]
-        data["notes"].append(
-            "Insufficient daily price history returned for "
-            f"{', '.join(tried)}; tried NSE/BSE ticker variants where applicable."
-        )
+    try:
+        handle = yf.Ticker(ticker)
+    except Exception as exc:
+        data["notes"].append(f"Could not open market data handle: {exc}")
+        return data
 
     # --- price history + indicators -------------------------------------
-    if closes and len(closes) >= 30:
-        macd_line, macd_signal, macd_hist = _macd(closes)
-        data.update({
-            "price_available": True,
-            "bars": len(closes),
-            "last_close": closes[-1],
-            "prev_close": closes[-2] if len(closes) > 1 else None,
-            "change_pct": (
-                (closes[-1] - closes[-2]) / closes[-2] * 100.0
-                if len(closes) > 1 and closes[-2] else None
-            ),
-            "period_high": max(closes),
-            "period_low": min(closes),
-            "pct_from_high": (max(closes) - closes[-1]) / max(closes) * 100.0,
-            "pct_from_low": (closes[-1] - min(closes)) / min(closes) * 100.0,
-            "return_1y_pct": (closes[-1] - closes[0]) / closes[0] * 100.0,
-            "sma20": _sma(closes, 20),
-            "sma50": _sma(closes, 50),
-            "sma200": _sma(closes, 200),
-            "rsi14": _rsi(closes, 14),
-            "macd": macd_line,
-            "macd_signal": macd_signal,
-            "macd_hist": macd_hist,
-            "volatility_pct": _annualised_volatility(closes),
-            "avg_volume_30d": (
-                sum(volumes[-30:]) / len(volumes[-30:]) if volumes else None
-            ),
-        })
+    try:
+        hist = handle.history(period="1y", interval="1d")
+        closes = [float(c) for c in hist["Close"].dropna().tolist()]
+        volumes = [float(v) for v in hist["Volume"].dropna().tolist()]
+
+        if len(closes) >= 30:
+            macd_line, macd_signal, macd_hist = _macd(closes)
+            data.update({
+                "price_available": True,
+                "bars": len(closes),
+                "last_close": closes[-1],
+                "prev_close": closes[-2] if len(closes) > 1 else None,
+                "change_pct": (
+                    (closes[-1] - closes[-2]) / closes[-2] * 100.0
+                    if len(closes) > 1 and closes[-2] else None
+                ),
+                "period_high": max(closes),
+                "period_low": min(closes),
+                "pct_from_high": (max(closes) - closes[-1]) / max(closes) * 100.0,
+                "pct_from_low": (closes[-1] - min(closes)) / min(closes) * 100.0,
+                "return_1y_pct": (closes[-1] - closes[0]) / closes[0] * 100.0,
+                "sma20": _sma(closes, 20),
+                "sma50": _sma(closes, 50),
+                "sma200": _sma(closes, 200),
+                "rsi14": _rsi(closes, 14),
+                "macd": macd_line,
+                "macd_signal": macd_signal,
+                "macd_hist": macd_hist,
+                "volatility_pct": _annualised_volatility(closes),
+                "avg_volume_30d": (
+                    sum(volumes[-30:]) / len(volumes[-30:]) if volumes else None
+                ),
+            })
+        else:
+            data["notes"].append(
+                "Insufficient daily price history returned to compute indicators."
+            )
+    except Exception as exc:
+        data["notes"].append(f"Price history unavailable: {exc}")
 
     # --- fundamentals ----------------------------------------------------
     try:
@@ -484,18 +414,32 @@ def _format_price_facts(md: Dict[str, Any]) -> str:
 
     cur = md.get("currency") or ""
     return "\n".join([
-        f"VERIFIED MARKET DATA (yfinance; computed from {md.get('bars')} daily bars, as of {md['as_of']}):",
+        (
+            f"VERIFIED MARKET DATA (yfinance; computed from "
+            f"{md.get('bars')} daily bars, as of {md['as_of']}):"
+        ),
         f"- Ticker: {md['ticker']} ({md.get('exchange') or 'exchange unavailable'})",
         f"- Last close: {_fmt(md.get('last_close'))} {cur}",
         f"- Session change: {_fmt(md.get('change_pct'), '%')}",
         f"- Trailing 12m return: {_fmt(md.get('return_1y_pct'), '%')}",
-        f"- 52w-window high / low: {_fmt(md.get('period_high'))} / {_fmt(md.get('period_low'))}",
+        (
+            f"- 52w-window high / low: "
+            f"{_fmt(md.get('period_high'))} / {_fmt(md.get('period_low'))}"
+        ),
         f"- Distance below window high: {_fmt(md.get('pct_from_high'), '%')}",
         f"- Distance above window low: {_fmt(md.get('pct_from_low'), '%')}",
-        f"- SMA20 / SMA50 / SMA200: {_fmt(md.get('sma20'))} / {_fmt(md.get('sma50'))} / {_fmt(md.get('sma200'))}",
+        (
+            f"- SMA20 / SMA50 / SMA200: "
+            f"{_fmt(md.get('sma20'))} / {_fmt(md.get('sma50'))} / "
+            f"{_fmt(md.get('sma200'))}"
+        ),
         f"- RSI(14): {_fmt(md.get('rsi14'))}",
-        f"- MACD line / signal / histogram: {_fmt(md.get('macd'), digits=4)} / "
-        f"{_fmt(md.get('macd_signal'), digits=4)} / {_fmt(md.get('macd_hist'), digits=4)}",
+        (
+            f"- MACD line / signal / histogram: "
+            f"{_fmt(md.get('macd'), digits=4)} / "
+            f"{_fmt(md.get('macd_signal'), digits=4)} / "
+            f"{_fmt(md.get('macd_hist'), digits=4)}"
+        ),
         f"- Annualised realised volatility: {_fmt(md.get('volatility_pct'), '%')}",
         f"- Average 30d volume: {_fmt_big(md.get('avg_volume_30d'))}",
     ])
@@ -511,17 +455,47 @@ def _format_fundamental_facts(md: Dict[str, Any]) -> str:
     return "\n".join([
         "VERIFIED FUNDAMENTAL DATA (yfinance):",
         f"- Company: {md.get('long_name') or 'unavailable'}",
-        f"- Sector / industry: {md.get('sector') or 'unavailable'} / {md.get('industry') or 'unavailable'}",
-        f"- Market capitalisation: {_fmt_big(md.get('market_cap'))} {md.get('currency') or ''}",
-        f"- Trailing P/E: {_fmt(md.get('trailing_pe'))} | Forward P/E: {_fmt(md.get('forward_pe'))}",
-        f"- Price/Book: {_fmt(md.get('price_to_book'))} | PEG: {_fmt(md.get('peg_ratio'))}",
-        f"- Revenue (TTM): {_fmt_big(md.get('total_revenue'))} | Free cash flow: {_fmt_big(md.get('free_cash_flow'))}",
-        f"- Revenue growth: {pct(md.get('revenue_growth'))} | Earnings growth: {pct(md.get('earnings_growth'))}",
-        f"- Operating margin: {pct(md.get('operating_margin'))} | Net margin: {pct(md.get('profit_margin'))}",
+        (
+            f"- Sector / industry: {md.get('sector') or 'unavailable'} / "
+            f"{md.get('industry') or 'unavailable'}"
+        ),
+        (
+            f"- Market capitalisation: {_fmt_big(md.get('market_cap'))} "
+            f"{md.get('currency') or ''}"
+        ),
+        (
+            f"- Trailing P/E: {_fmt(md.get('trailing_pe'))} | "
+            f"Forward P/E: {_fmt(md.get('forward_pe'))}"
+        ),
+        (
+            f"- Price/Book: {_fmt(md.get('price_to_book'))} | "
+            f"PEG: {_fmt(md.get('peg_ratio'))}"
+        ),
+        (
+            f"- Revenue (TTM): {_fmt_big(md.get('total_revenue'))} | "
+            f"Free cash flow: {_fmt_big(md.get('free_cash_flow'))}"
+        ),
+        (
+            f"- Revenue growth: {pct(md.get('revenue_growth'))} | "
+            f"Earnings growth: {pct(md.get('earnings_growth'))}"
+        ),
+        (
+            f"- Operating margin: {pct(md.get('operating_margin'))} | "
+            f"Net margin: {pct(md.get('profit_margin'))}"
+        ),
         f"- Return on equity: {pct(md.get('return_on_equity'))}",
-        f"- Debt/Equity: {_fmt(md.get('debt_to_equity'))} | Current ratio: {_fmt(md.get('current_ratio'))}",
-        f"- Dividend yield: {pct(md.get('dividend_yield'))} | Beta: {_fmt(md.get('beta'))}",
-        f"- Business description (provider supplied): {md.get('business_summary') or 'unavailable'}",
+        (
+            f"- Debt/Equity: {_fmt(md.get('debt_to_equity'))} | "
+            f"Current ratio: {_fmt(md.get('current_ratio'))}"
+        ),
+        (
+            f"- Dividend yield: {pct(md.get('dividend_yield'))} | "
+            f"Beta: {_fmt(md.get('beta'))}"
+        ),
+        (
+            f"- Business description (provider supplied): "
+            f"{md.get('business_summary') or 'unavailable'}"
+        ),
     ])
 
 
@@ -847,7 +821,8 @@ def _stage_fundamental(request: AnalyzeRequest, md: Dict[str, Any]) -> Dict[str,
 
     if md.get("fundamentals_available"):
         summary = (
-            f"Valuation and statement metrics analysed (P/E {_fmt(md.get('trailing_pe'))}, "
+            f"Valuation and statement metrics analysed "
+            f"(P/E {_fmt(md.get('trailing_pe'))}, "
             f"market cap {_fmt_big(md.get('market_cap'))})."
         )
         stage_status = "completed"
@@ -879,7 +854,10 @@ def _stage_news(request: AnalyzeRequest, md: Dict[str, Any]) -> Dict[str, str]:
     )
     prompt = "\n\n".join([
         _profile_text(request),
-        f"Ticker under review: {md.get('ticker')} ({md.get('long_name') or 'name unavailable'})",
+        (
+            f"Ticker under review: {md.get('ticker')} "
+            f"({md.get('long_name') or 'name unavailable'})"
+        ),
         _format_headlines(md),
         _format_price_facts(md),
     ])
@@ -967,7 +945,10 @@ async def _run_research(
                 "name": name,
                 "status": "failed",
                 "summary": f"Stage could not complete: {result}",
-                "brief": f"{name} produced no output; treat this dimension as unresearched.",
+                "brief": (
+                    f"{name} produced no output; "
+                    "treat this dimension as unresearched."
+                ),
             })
         else:
             output.append(result)
@@ -999,34 +980,30 @@ Additional requirements:
 - Be analytical, not descriptive: explain what each fact implies for the stated
   investor mandate.
 - Give no buy/sell/hold rating. Frame conclusions as considerations.
-- TARGET LENGTH: the full report (all fields combined) must total
-  approximately 1,800-2,400 words - about 2-3 printed pages. This is a hard
-  ceiling. A shorter, complete report is far more useful than a longer,
-  truncated one that fails to parse. Be concise; do not pad.
 
 Respond ONLY with a valid JSON object - no markdown fences, no extra text:
 {
   "ticker": "TICKER",
   "company": "Full Company Name",
-  "investor_profile": "80-120 words restating the mandate the analysis serves.",
-  "executive_summary": "150-200 words. The complete thesis, the two or three
+  "investor_profile": "150-200 words restating the mandate the analysis serves.",
+  "executive_summary": "250-350 words. The complete thesis, the two or three
      facts that drive it, and the principal uncertainty.",
-  "technical_outlook": "200-280 words citing the verified indicator values.",
-  "fundamental_view": "220-300 words on growth, margins, returns, balance sheet
+  "technical_outlook": "400-550 words citing the verified indicator values.",
+  "fundamental_view": "450-600 words on growth, margins, returns, balance sheet
      and moat.",
-  "valuation_view": "120-180 words on what the supplied multiples imply and what
+  "valuation_view": "250-350 words on what the supplied multiples imply and what
      has to be true to justify them.",
-  "news_sentiment": "150-220 words grounded strictly in the supplied headlines;
+  "news_sentiment": "300-450 words grounded strictly in the supplied headlines;
      if none were supplied, say so and keep it brief.",
-  "risk_assessment": "220-300 words as a labelled risk register with severities.",
-  "scenario_analysis": "120-180 words: base, bull and bear cases described
+  "risk_assessment": "450-600 words as a labelled risk register with severities.",
+  "scenario_analysis": "250-350 words: base, bull and bear cases described
      qualitatively with the conditions that would confirm each. No price targets.",
-  "catalysts_to_watch": "80-120 words listing expected events and the metrics
+  "catalysts_to_watch": "150-250 words listing expected events and the metrics
      that would change the thesis.",
-  "final_verdict": "150-200 words tying everything back to the investor's stated
+  "final_verdict": "250-350 words tying everything back to the investor's stated
      horizon and risk tolerance. Balanced. No rating.",
   "confidence": "High or Medium or Low",
-  "data_availability": "60-100 words stating exactly which data was live and
+  "data_availability": "80-150 words stating exactly which data was live and
      verified, and which was unavailable at analysis time.",
   "key_metrics": {"Metric name": "value exactly as supplied, or 'unavailable'"},
   "sources": ["data source actually used", "..."],
@@ -1081,88 +1058,13 @@ def _build_synthesis_prompt(
     return "\n".join(parts)
 
 
-def _parse_json_response(raw: str) -> Optional[Dict[str, Any]]:
-    """Best-effort parse of a model's JSON reply.
-
-    Returns None instead of raising so the caller can decide whether to
-    retry or fail; used by ``_run_synthesis`` to recover from a truncated
-    first attempt without crashing the whole pipeline.
-    """
-    cleaned = re.sub(r"```(?:json)?", "", raw).strip().strip("`").strip()
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        pass
-
-    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-    if not match:
-        return None
-    try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return None
-
-
-async def _run_synthesis(synthesis_prompt: str) -> Dict[str, Any]:
-    """Call the synthesis model and parse its JSON report.
-
-    Requests the model's native JSON response mode (auto-fallback to plain
-    text if unsupported, handled inside ``_generate_text``) and retries once
-    with an explicit brevity/completeness reminder if the first reply fails
-    to parse - truncation from the token budget being the most likely cause.
-    Raises HTTPException only if both attempts fail to produce valid JSON.
-    """
-    prompts = [
-        synthesis_prompt,
-        synthesis_prompt
-        + "\n\nIMPORTANT: Your previous reply did not parse as valid JSON, "
-          "most likely because it ran too long and was cut off. Stay within "
-          "the word limits given above for every section, keep the total "
-          f"response well under {SYNTHESIS_TOKENS} tokens, and return a "
-          "single, complete, syntactically valid JSON object with no "
-          "trailing text.",
-    ]
-
-    last_raw = ""
-    for prompt in prompts:
-        try:
-            raw = await asyncio.to_thread(
-                _generate_text,
-                prompt,
-                _ANALYSIS_SYSTEM,
-                SYNTHESIS_TOKENS,
-                0.35,
-                ORCHESTRATOR_MODEL,
-                True,
-            )
-        except HTTPException:
-            raise
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Groq synthesis call failed: {exc}",
-            ) from exc
-
-        last_raw = raw
-        parsed = _parse_json_response(raw)
-        if parsed is not None:
-            return parsed
-
-    raise HTTPException(
-        status_code=status.HTTP_502_BAD_GATEWAY,
-        detail=(
-            "Failed to parse synthesis JSON response after retry. "
-            f"Preview: {last_raw[:400]}"
-        ),
-    )
-
-
 def _render_markdown(data: Dict[str, Any], md: Dict[str, Any],
                      briefs: List[Dict[str, str]], ticker: str, company: str) -> str:
     metrics = data.get("key_metrics") or {}
     metric_lines = (
         "\n".join(f"| {k} | {v} |" for k, v in metrics.items())
-        if isinstance(metrics, dict) and metrics else "| — | No verified metrics available |"
+        if isinstance(metrics, dict) and metrics
+        else "| — | No verified metrics available |"
     )
     sources = data.get("sources") or _collect_sources(md)
     source_lines = "\n".join(f"- {s}" for s in sources)
@@ -1247,7 +1149,13 @@ def _render_markdown(data: Dict[str, Any], md: Dict[str, Any],
 
 ---
 
-*{data.get("disclaimer", "This report is for informational purposes only and does not constitute financial advice.")}*
+*{
+    data.get(
+        "disclaimer",
+        "This report is for informational purposes only "
+        "and does not constitute financial advice.",
+    )
+}*
 """
 
 
@@ -1275,10 +1183,7 @@ async def analyze_company(request: AnalyzeRequest) -> AnalyzeResponse:
         _resolve_instrument, request.query, request.ticker, request.target_company
     )
     market_data = await asyncio.to_thread(_fetch_market_data, ticker)
-    # Keep whichever ticker candidate actually resolved inside
-    # _fetch_market_data (e.g. "ITC" -> "ITC.NS"), rather than overwriting
-    # it back to the unqualified symbol that was passed in.
-    ticker = market_data.get("ticker", ticker)
+    market_data["ticker"] = ticker
 
     # --- Stages 1-5: concurrent specialist research -----------------------
     try:
@@ -1302,7 +1207,44 @@ async def analyze_company(request: AnalyzeRequest) -> AnalyzeResponse:
         request, market_data, briefs, resolution_notes
     )
 
-    data: Dict[str, Any] = await _run_synthesis(synthesis_prompt)
+    try:
+        raw = await asyncio.to_thread(
+            _generate_text,
+            synthesis_prompt,
+            _ANALYSIS_SYSTEM,
+            SYNTHESIS_TOKENS,
+            0.35,
+            ORCHESTRATOR_MODEL,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Groq synthesis call failed: {exc}",
+        ) from exc
+
+    cleaned = re.sub(r"```(?:json)?", "", raw).strip().strip("`").strip()
+    try:
+        data: Dict[str, Any] = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Salvage the outermost JSON object if the model added stray prose.
+        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if not match:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to parse synthesis JSON response. Preview: {raw[:400]}",
+            )
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    f"Failed to parse synthesis JSON response: {exc}. "
+                    f"Preview: {raw[:400]}"
+                ),
+            ) from exc
 
     final_ticker = data.get("ticker") or ticker or "N/A"
     final_company = (
@@ -1351,7 +1293,10 @@ async def analyze_company(request: AnalyzeRequest) -> AnalyzeResponse:
         confidence=data.get("confidence", "Medium"),
         disclaimer=data.get(
             "disclaimer",
-            "This report is for informational purposes only and does not constitute financial advice.",
+            (
+                "This report is for informational purposes only "
+                "and does not constitute financial advice."
+            ),
         ),
         agent_statuses=agent_statuses,
         raw_markdown=raw_markdown,
