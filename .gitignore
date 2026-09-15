@@ -51,6 +51,7 @@ ENV/
 env/
 env.bak/
 venv.bak/
+finpilot/
 
 # Unit test / coverage reports
 htmlcov/

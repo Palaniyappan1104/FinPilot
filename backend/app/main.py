@@ -1,5 +1,12 @@
 """Main FastAPI application entrypoint for FinPilot."""
 
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load backend/.env
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
