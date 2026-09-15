@@ -28,7 +28,10 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url(
+        'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;'
+        '700&display=swap'
+    );
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
@@ -204,11 +207,15 @@ if "detected_ticker" not in st.session_state:
     st.session_state.detected_ticker = None
 if "detected_company" not in st.session_state:
     st.session_state.detected_company = None
+if "off_topic_notice" not in st.session_state:
+    # Set when /clarify flags the query as not finance-related. Shown once
+    # on the query screen, then cleared on the next successful submit.
+    st.session_state.off_topic_notice = None
 
 
 def reset():
     for k in ["stage", "questions", "answers", "result", "query",
-              "detected_ticker", "detected_company"]:
+              "detected_ticker", "detected_company", "off_topic_notice"]:
         if k in st.session_state:
             del st.session_state[k]
     st.rerun()
@@ -219,10 +226,23 @@ def reset():
 # ---------------------------------------------------------------------------
 if st.session_state.stage == "query":
     st.markdown("### 🔍 What would you like to research?")
+
+    if st.session_state.off_topic_notice:
+        st.warning(
+            "🧭 FinPilot only handles finance and investing questions "
+            "(stocks, portfolios, valuation, market risk, and similar "
+            f"topics). Your last query — *\"{st.session_state.off_topic_notice}\"* "
+            "— looked unrelated to investing, so no analysis was run. "
+            "Try rephrasing it as an investing question."
+        )
+
     query = st.text_area(
         label="query_input",
         label_visibility="collapsed",
-        placeholder='e.g. "Should I invest in Apple for the long term?" or "Analyse TSLA for a growth portfolio"',
+        placeholder=(
+            'e.g. "Should I invest in Apple for the long term?" or '
+            '"Analyse TSLA for a growth portfolio"'
+        ),
         height=100,
         key="query_input_box",
     )
@@ -245,14 +265,30 @@ if st.session_state.stage == "query":
                     )
                     resp.raise_for_status()
                     data = resp.json()
-                    st.session_state.questions = data.get("questions", [])
-                    st.session_state.detected_ticker = data.get("detected_ticker")
-                    st.session_state.detected_company = data.get("detected_company")
-                    st.session_state.stage = "clarify"
-                    st.rerun()
+
+                    # Backend flags non-finance queries via is_finance_related.
+                    # Defaults to True so older backends (without the field)
+                    # or any missing-key response still behave as before.
+                    is_finance_related = data.get("is_finance_related", True)
+
+                    if not is_finance_related:
+                        # Off-topic: don't advance to clarify/analyze. Show a
+                        # notice on this same screen instead.
+                        st.session_state.off_topic_notice = st.session_state.query
+                        st.rerun()
+                    else:
+                        st.session_state.off_topic_notice = None
+                        st.session_state.questions = data.get("questions", [])
+                        st.session_state.detected_ticker = data.get("detected_ticker")
+                        st.session_state.detected_company = data.get("detected_company")
+                        st.session_state.stage = "clarify"
+                        st.rerun()
                 except requests.exceptions.ConnectionError:
-                    st.error("❌ Cannot connect to backend. Make sure FastAPI is running at http://localhost:8000")
-                except Exception as e:
+                    st.error(
+                        "❌ Cannot connect to backend. Make sure FastAPI is running "
+                        "at http://localhost:8000"
+                    )
+                except requests.RequestException as e:
                     st.error(f"❌ Error: {e}")
 
     st.markdown("---")
@@ -287,11 +323,15 @@ elif st.session_state.stage == "clarify":
     if st.session_state.detected_company or st.session_state.detected_ticker:
         label = st.session_state.detected_company or ""
         ticker = st.session_state.detected_ticker or ""
-        tag = f"**{label}**  `{ticker}`" if label and ticker else f"**{label or ticker}**"
+        tag = (
+            f"**{label}**  `{ticker}`"
+            if label and ticker
+            else f"**{label or ticker}**"
+        )
         st.success(f"🎯 Detected: {tag}")
 
     st.markdown(f"**Your Query:** *{st.session_state.query}*")
-    st.markdown("### 🤔 A couple of quick questions before we dive in")
+    st.markdown("### 🤔 A few quick questions before we dive in")
     st.markdown("*Help us tailor the analysis to your goals:*")
     st.markdown("")
 
@@ -333,8 +373,14 @@ elif st.session_state.stage == "analyzing":
 
     agents = [
         ("Conversation Agent", "Parsing query and building the investor mandate"),
-        ("Technical Analyst", "Fetching price history and computing RSI / MACD / moving averages"),
-        ("Fundamental Analyst", "Pulling valuation ratios, margins and balance-sheet data"),
+        (
+            "Technical Analyst",
+            "Fetching price history and computing RSI / MACD / moving averages",
+        ),
+        (
+            "Fundamental Analyst",
+            "Pulling valuation ratios, margins and balance-sheet data",
+        ),
         ("News & Sentiment Agent", "Searching reputable outlets for recent coverage"),
         ("Risk Assessment Agent", "Scoring market, sector, company and macro risk"),
     ]
@@ -352,12 +398,18 @@ elif st.session_state.stage == "analyzing":
                 pill = '<span class="agent-pill">✓ Done</span>'
                 name_style = ""
             elif idx == completed:
-                pill = ('<span class="agent-pill" style="background:rgba(255,193,7,0.15);'
-                        'border-color:rgba(255,193,7,0.4);color:#ffd740;">⟳ Running</span>')
+                pill = (
+                    '<span class="agent-pill" style="background:rgba(255,193,7,0.15);'
+                    'border-color:rgba(255,193,7,0.4);color:#ffd740;">'
+                    '⟳ Running</span>'
+                )
                 name_style = ""
             else:
-                pill = ('<span class="agent-pill" style="background:rgba(100,100,100,0.1);'
-                        'border-color:rgba(100,100,100,0.2);color:#607d8b;">Queued</span>')
+                pill = (
+                    '<span class="agent-pill" style="background:rgba(100,100,100,0.1);'
+                    'border-color:rgba(100,100,100,0.2);color:#607d8b;">'
+                    'Queued</span>'
+                )
                 name_style = "color:#546e7a;"
             rows += (
                 f'<div class="agent-row"><span style="{name_style}" class="agent-name">'
@@ -366,15 +418,21 @@ elif st.session_state.stage == "analyzing":
 
         # Final synthesis row — never shown as done until the API actually returns
         if synthesis_state == "running":
-            synth_pill = ('<span class="agent-pill" style="background:rgba(33,150,243,0.15);'
-                          'border-color:rgba(33,150,243,0.45);color:#64b5f6;">⟳ Synthesizing</span>')
+            synth_pill = (
+                '<span class="agent-pill" style="background:rgba(33,150,243,0.15);'
+                'border-color:rgba(33,150,243,0.45);color:#64b5f6;">'
+                '⟳ Synthesizing</span>'
+            )
             synth_style = ""
         elif synthesis_state == "done":
             synth_pill = '<span class="agent-pill">✓ Done</span>'
             synth_style = ""
         else:
-            synth_pill = ('<span class="agent-pill" style="background:rgba(100,100,100,0.1);'
-                          'border-color:rgba(100,100,100,0.2);color:#607d8b;">Queued</span>')
+            synth_pill = (
+                '<span class="agent-pill" style="background:rgba(100,100,100,0.1);'
+                'border-color:rgba(100,100,100,0.2);color:#607d8b;">'
+                'Queued</span>'
+            )
             synth_style = "color:#546e7a;"
         rows += (
             f'<div class="agent-row"><span style="{synth_style}" class="agent-name">'
@@ -471,7 +529,10 @@ elif st.session_state.stage == "done":
         conf = r.get("confidence", "Medium")
         conf_class = f"confidence-{conf.lower()}"
         st.markdown(
-            f"<p style='text-align:right; padding-top:1rem;'>Confidence: <span class='{conf_class}'>{conf}</span></p>",
+            (
+                f"<p style='text-align:right; padding-top:1rem;'>"
+                f"Confidence: <span class='{conf_class}'>{conf}</span></p>"
+            ),
             unsafe_allow_html=True,
         )
 
