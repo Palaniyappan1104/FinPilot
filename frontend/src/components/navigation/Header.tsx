@@ -15,7 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     if (path === '/') return 'System Dashboard';
     if (path.startsWith('/analysis/new')) return 'New Investment Research';
     if (path.includes('/progress')) return 'Multi-Agent Pipeline Monitor';
-    if (path.includes('/specialists')) return 'Specialist Analytical Insights';
+    if (path.startsWith('/multi-agent')) return 'Multi-Agent Architecture';
     if (path.startsWith('/reports')) return 'Investment Research Reports';
     if (path.startsWith('/documents')) return 'Research Vault (SEC & Filings)';
     if (path.startsWith('/profile')) return 'Investor Profile & Constraints';

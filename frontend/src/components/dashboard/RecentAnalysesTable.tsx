@@ -122,13 +122,11 @@ export const RecentAnalysesTable: React.FC<RecentAnalysesTableProps> = ({
                   )}
                   <button
                     type="button"
-                    onClick={() =>
-                      navigate(`/analysis/${item.analysis_id}/specialists`)
-                    }
+                    onClick={() => navigate('/multi-agent')}
                     className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
                   >
                     <Layers className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                    Specialists
+                    Pipeline View
                   </button>
                 </td>
               </tr>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
@@ -7,11 +7,9 @@ import {
   FolderLock,
   ArrowRight,
   ShieldCheck,
-  Search,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { StatCard } from '../components/common/StatCard';
-import { AgentPipelineVisualizer } from '../components/dashboard/AgentPipelineVisualizer';
 import { RecentAnalysesTable } from '../components/dashboard/RecentAnalysesTable';
 import { WatchlistQuickStart } from '../components/dashboard/WatchlistQuickStart';
 import { AnalysisSummary, CompanyInfo } from '../types';
@@ -19,13 +17,6 @@ import { AnalysisSummary, CompanyInfo } from '../types';
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { recentAnalyses, setSelectedCompany, documents } = useApp();
-  const [quickQuery, setQuickQuery] = useState('');
-
-  const handleQuickSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickQuery.trim()) return;
-    navigate(`/analysis/new?q=${encodeURIComponent(quickQuery.trim())}`);
-  };
 
   const handleSelectQuickCompany = (comp: CompanyInfo) => {
     setSelectedCompany(comp);
@@ -65,51 +56,18 @@ export const DashboardPage: React.FC = () => {
             FinPilot coordinates autonomous specialists in Fundamental, Technical, News Sentiment, and SEC Filing analysis to synthesize objective, evidence-grounded dossiers tailored to your investor constraints.
           </p>
 
-          {/* Primary Query Action Bar */}
-          <form
-            onSubmit={handleQuickSubmit}
-            className="pt-2 flex flex-col sm:flex-row gap-2 max-w-2xl"
-          >
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={quickQuery}
-                onChange={(e) => setQuickQuery(e.target.value)}
-                placeholder="Ask an investment research question (e.g., 'Should I invest in Infosys for 5 years?')..."
-                className="w-full pl-10 pr-4 py-3 text-xs sm:text-sm bg-slate-800/90 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-inner"
-              />
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-            </div>
+          {/* Primary Action Button */}
+          <div className="pt-3 flex items-center space-x-4">
             <button
-              type="submit"
-              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all shadow-sm flex-shrink-0"
+              type="button"
+              data-testid="hero-start-analysis-btn"
+              onClick={() => navigate('/analysis/new')}
+              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm flex items-center space-x-2 transition-all shadow-md hover:shadow-lg shadow-emerald-950/40"
             >
-              <span>Analyze</span>
-              <ArrowRight className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 mr-1" />
+              <span>Start New Analysis</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
             </button>
-          </form>
-
-          {/* Example query links */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-400">
-            <span className="text-[11px] uppercase tracking-wider font-semibold">
-              Sample Inquiries:
-            </span>
-            {[
-              'Should I invest ₹1,00,000 in Infosys for 5 years?',
-              'Evaluate Apple Services gross margin trajectory',
-              'Review NVIDIA valuation vs semiconductors',
-            ].map((prompt, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() =>
-                  navigate(`/analysis/new?q=${encodeURIComponent(prompt)}`)
-                }
-                className="text-[11px] text-slate-300 hover:text-emerald-400 underline underline-offset-2"
-              >
-                {prompt}
-              </button>
-            ))}
           </div>
         </div>
       </div>
@@ -149,9 +107,6 @@ export const DashboardPage: React.FC = () => {
           subtitle="No fabricated figures or trading bot advice"
         />
       </div>
-
-      {/* Multi-Agent Architecture Visualization */}
-      <AgentPipelineVisualizer />
 
       {/* Watchlist Quick Launch */}
       <WatchlistQuickStart onSelectCompany={handleSelectQuickCompany} />

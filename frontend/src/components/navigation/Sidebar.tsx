@@ -3,9 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Sparkles,
-  Activity,
   Layers,
-  FileText,
   FolderLock,
   UserCheck,
   ShieldAlert,
@@ -33,29 +31,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, className = '' }) => 
       icon: <Sparkles className="w-4 h-4 mr-3 flex-shrink-0" />,
     },
     {
-      label: 'Analysis Monitor',
-      to: activeAnalysis
-        ? `/analysis/${activeAnalysis.analysisId}/progress`
-        : '/analysis/progress',
-      icon: <Activity className="w-4 h-4 mr-3 flex-shrink-0" />,
-      badge: activeAnalysis?.status === 'running' ? 'Active' : undefined,
-    },
-    {
-      label: 'Specialist Insights',
-      to: activeAnalysis
-        ? `/analysis/${activeAnalysis.analysisId}/specialists`
-        : '/specialists',
-      icon: <Layers className="w-4 h-4 mr-3 flex-shrink-0" />,
-    },
-    {
-      label: 'Research Reports',
-      to: '/reports',
-      icon: <FileText className="w-4 h-4 mr-3 flex-shrink-0" />,
-    },
-    {
       label: 'Research Vault',
       to: '/documents',
       icon: <FolderLock className="w-4 h-4 mr-3 flex-shrink-0" />,
+    },
+    {
+      label: 'Multi-Agent Analysis',
+      to: '/multi-agent',
+      icon: <Layers className="w-4 h-4 mr-3 flex-shrink-0" />,
+      badge: activeAnalysis?.status === 'running' ? 'Active' : undefined,
     },
     {
       label: 'Investor Profile',
@@ -141,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, className = '' }) => 
           {profile.time_horizon || '3-5 years'}
         </div>
         <div className="text-[11px] text-slate-400 mt-0.5">
-          Capital: {profile.currency || 'USD'} {Number(profile.capital_amount || 50000).toLocaleString()}
+          Capital: ${Number(profile.capital_amount || 50000).toLocaleString()}
         </div>
       </div>
 

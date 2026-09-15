@@ -1,5 +1,5 @@
-import React from 'react';
-import { CheckCircle2, ShieldAlert, ArrowLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, ShieldAlert, ArrowLeft, Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import { FinalReport } from '../../types';
 import { ReportHeader } from './ReportHeader';
 import { ExecutiveRecommendation } from './ExecutiveRecommendation';
@@ -18,6 +18,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
   onBack,
   className = '',
 }) => {
+  const [showSpecialistBreakdown, setShowSpecialistBreakdown] = useState(true);
   return (
     <div data-testid="report-view" className={`space-y-6 print:space-y-4 ${className}`}>
       {/* Back button if passed */}
@@ -65,17 +66,47 @@ export const ReportView: React.FC<ReportViewProps> = ({
         </div>
       )}
 
-      {/* Specialist Deep Dive Tabs */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
-          Specialist Analytical Evidence
-        </h3>
-        <SpecialistTabContainer
-          technical={report.technical}
-          fundamental={report.fundamental}
-          news={report.news}
-          risk={report.risk}
-        />
+      {/* Specialist Deep Dive Tabs (Expandable Evidence Breakdown) */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowSpecialistBreakdown(!showSpecialistBreakdown)}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left"
+          aria-expanded={showSpecialistBreakdown}
+        >
+          <div className="flex items-center space-x-3">
+            <Layers className="w-4 h-4 text-emerald-600" />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Specialist Analytical Evidence & Breakdown
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Inspect underlying Technical, Fundamental, News Sentiment, and Risk domain outputs
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+              {showSpecialistBreakdown ? 'Hide Details' : 'Show Details'}
+            </span>
+            {showSpecialistBreakdown ? (
+              <ChevronUp className="w-4 h-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            )}
+          </div>
+        </button>
+
+        {showSpecialistBreakdown && (
+          <div className="p-6 pt-2 border-t border-slate-100">
+            <SpecialistTabContainer
+              technical={report.technical}
+              fundamental={report.fundamental}
+              news={report.news}
+              risk={report.risk}
+            />
+          </div>
+        )}
       </div>
 
       {/* 16.9.3 Critical Risk Factors */}

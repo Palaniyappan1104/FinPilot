@@ -192,15 +192,22 @@ class GeminiProvider(LLMProvider):
                 provider=self._provider_name,
             ) from exc
 
-        # Check for transient errors (429, 500, 502, 503, 504, network errors)
+        # Check for transient errors (429, 500, 502, 503, 504, network and disconnection errors)
+        err_msg_lower = err_msg.lower()
         if (
             status_code in (429, 500, 502, 503, 504)
-            or "rate limit" in err_msg.lower()
-            or "quota" in err_msg.lower()
-            or "resource exhausted" in err_msg.lower()
-            or "unavailable" in err_msg.lower()
-            or "timeout" in err_msg.lower()
-            or "connection" in err_msg.lower()
+            or "rate limit" in err_msg_lower
+            or "quota" in err_msg_lower
+            or "resource exhausted" in err_msg_lower
+            or "unavailable" in err_msg_lower
+            or "timeout" in err_msg_lower
+            or "connection" in err_msg_lower
+            or "disconnected" in err_msg_lower
+            or "remote end closed" in err_msg_lower
+            or "broken pipe" in err_msg_lower
+            or "socket" in err_msg_lower
+            or "reset by peer" in err_msg_lower
+            or "eof" in err_msg_lower
         ):
             raise LLMTransientError(
                 message=f"Gemini transient failure: {err_msg}",

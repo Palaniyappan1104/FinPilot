@@ -5,8 +5,7 @@ import { AppLayout } from './layouts/AppLayout';
 
 import { DashboardPage } from './pages/DashboardPage';
 import { NewAnalysisPage } from './pages/NewAnalysisPage';
-import { AnalysisProgressPage } from './pages/AnalysisProgressPage';
-import { SpecialistsPage } from './pages/SpecialistsPage';
+import { MultiAgentPage } from './pages/MultiAgentPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -17,38 +16,30 @@ export const App: React.FC = () => {
       <BrowserRouter>
         <AppLayout>
           <Routes>
-            {/* 16.2 Dashboard */}
+            {/* Dashboard */}
             <Route path="/" element={<DashboardPage />} />
 
-            {/* 16.3, 16.4, 16.5 New Analysis & Chat Query */}
+            {/* Unified Research & Analysis Flow */}
             <Route path="/analysis/new" element={<NewAnalysisPage />} />
+            <Route path="/analysis/:id/progress" element={<NewAnalysisPage />} />
+            <Route path="/analysis/progress" element={<NewAnalysisPage />} />
 
-            {/* 16.6 Analysis Progress & Status */}
-            <Route
-              path="/analysis/:id/progress"
-              element={<AnalysisProgressPage />}
-            />
-            <Route
-              path="/analysis/progress"
-              element={<AnalysisProgressPage />}
-            />
+            {/* Dedicated Multi-Agent Analysis Section */}
+            <Route path="/multi-agent" element={<MultiAgentPage />} />
 
-            {/* 16.7 Specialist Results */}
-            <Route
-              path="/analysis/:id/specialists"
-              element={<SpecialistsPage />}
-            />
-            <Route path="/specialists" element={<SpecialistsPage />} />
-
-            {/* 16.9 Final Investment Report */}
+            {/* Final Investment Report (Direct Link / History) */}
             <Route path="/reports/:id" element={<ReportsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
 
-            {/* 16.8 Research Document Upload & Filing Q&A */}
+            {/* Research Document Upload & Filing Q&A */}
             <Route path="/documents" element={<DocumentsPage />} />
 
-            {/* 16.5 Investor Profile */}
+            {/* Investor Profile */}
             <Route path="/profile" element={<ProfilePage />} />
+
+            {/* Legacy redirect */}
+            <Route path="/specialists" element={<Navigate to="/multi-agent" replace />} />
+            <Route path="/analysis/:id/specialists" element={<Navigate to="/multi-agent" replace />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -37,7 +37,6 @@ export interface InvestorProfile {
   investment_goal?: string;
   time_horizon?: string;
   capital_amount?: number;
-  currency?: string;
   risk_tolerance?: string;
 }
 

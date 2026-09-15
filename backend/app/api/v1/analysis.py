@@ -222,11 +222,17 @@ def _extract_response_from_state(
             )
 
     # Determine execution status
-    if clarification_needed:
+    err_val = final_state.get("error")
+    if clarified_req.get("intent_type") == "error":
+        execution_status = "failed"
+        clarification_needed = False
+        err_val = err_val or (clarification_questions[0] if clarification_questions else "Conversation processing failed.")
+        clarification_questions = []
+    elif clarification_needed:
         execution_status = "clarification_needed"
     elif final_report is not None:
         execution_status = "completed"
-    elif final_state.get("error"):
+    elif err_val:
         execution_status = "failed"
     else:
         execution_status = "completed"
@@ -239,7 +245,7 @@ def _extract_response_from_state(
         ticker=ticker,
         questions=clarification_questions,
         report=final_report,
-        error=final_state.get("error"),
+        error=err_val,
     )
 
     return AnalysisExecutionResponse(

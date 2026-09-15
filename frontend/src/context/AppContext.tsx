@@ -25,6 +25,8 @@ import {
 import { apiService } from '../services/api';
 
 const SESSION_PROFILE_STORAGE_KEY = 'finpilot_investor_profile';
+export const SESSION_ANALYSIS_STORAGE_KEY = 'finpilot_active_analysis_resume';
+
 
 export interface ActiveAnalysisState {
   analysisId: string;
@@ -77,7 +79,6 @@ const DEFAULT_PROFILE: InvestorProfile = {
   investment_goal: 'Capital Appreciation & Moderate Growth',
   time_horizon: '3-5 years',
   capital_amount: 50000,
-  currency: 'USD',
   risk_tolerance: 'moderate',
 };
 

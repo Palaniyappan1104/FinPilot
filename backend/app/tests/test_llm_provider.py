@@ -14,6 +14,7 @@ from app.core.llm.exceptions import (
     LLMResponseError,
     LLMRetryExhaustedError,
     LLMStructuredOutputError,
+    LLMTransientError,
 )
 from app.core.llm.factory import get_llm_provider
 from app.core.llm.gemini import GeminiProvider
@@ -438,3 +439,43 @@ def test_structured_output_error_does_not_leak_secret():
         )
 
     assert secret_key not in str(exc_info.value)
+
+
+# ==============================================================================
+# 11. Server Disconnect Triggers Transient Retry (Phase 17 bugfix)
+# ==============================================================================
+
+
+def test_server_disconnect_string_triggers_transient_retry():
+    """Prove 'Server disconnected without sending a response' maps to LLMTransientError,
+    triggers retry_with_backoff, and successfully recovers when the second call succeeds.
+
+    Fully deterministic unit test with zero real Gemini/network calls.
+    """
+    fake_client = MagicMock()
+
+    class ServerDisconnectError(Exception):
+        pass
+
+    disconnect_msg = "Server disconnected without sending a response"
+    successful_resp = make_fake_gemini_response(text="Recovered from disconnect.")
+
+    # Attempt 1: disconnects; Attempt 2: succeeds
+    fake_client.interactions.create.side_effect = [
+        ServerDisconnectError(disconnect_msg),
+        successful_resp,
+    ]
+
+    settings = make_test_settings(LLM_MAX_RETRIES=3, LLM_INITIAL_RETRY_DELAY=0.0)
+    provider = GeminiProvider(settings=settings, client=fake_client)
+
+    response = provider.generate("Analyze disconnect resilience")
+
+    # Assert underlying call count is exactly 2 (1 transient fail + 1 successful retry)
+    assert fake_client.interactions.create.call_count == 2
+
+    # Assert overall operation succeeds with expected content
+    assert isinstance(response, LLMResponse)
+    assert response.content == "Recovered from disconnect."
+    assert response.provider == "gemini"
+

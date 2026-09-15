@@ -58,11 +58,10 @@ export const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
     if (onSaved) onSaved();
   };
 
-  const handlePresetCapital = (amt: number, curr?: string) => {
+  const handlePresetCapital = (amt: number) => {
     setFormData((prev) => ({
       ...prev,
       capital_amount: amt,
-      currency: curr || prev.currency || 'USD',
     }));
     if (errors.capital_amount) {
       setErrors((prev) => {
@@ -92,7 +91,12 @@ export const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
           type="button"
           onClick={() => {
             resetProfile();
-            setFormData(profile);
+            setFormData({
+              investment_goal: 'Capital Appreciation & Moderate Growth',
+              time_horizon: '3-5 years',
+              capital_amount: 50000,
+              risk_tolerance: 'moderate',
+            });
           }}
           className="text-xs text-slate-400 hover:text-slate-600 flex items-center"
         >
@@ -110,30 +114,45 @@ export const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
           >
             Investment Objective
           </label>
-          <select
+          <input
             id="investment_goal"
+            type="text"
             value={formData.investment_goal || ''}
             onChange={(e) =>
               setFormData({ ...formData, investment_goal: e.target.value })
             }
+            placeholder="e.g. Capital Appreciation & Moderate Growth"
             className={`w-full px-3 py-2 text-sm bg-white border rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
               errors.investment_goal ? 'border-rose-300 ring-1 ring-rose-300' : 'border-slate-300'
             }`}
-          >
-            <option value="Capital Appreciation & Moderate Growth">
-              Capital Appreciation & Growth
-            </option>
-            <option value="Wealth Preservation & Conservative Return">
-              Wealth Preservation & Safety
-            </option>
-            <option value="High Dividend Yield & Cash Flow">
-              High Dividend Yield & Cash Flow
-            </option>
-            <option value="Balanced Multi-Asset Growth">Balanced Growth & Income</option>
-            <option value="Speculative High-Growth Opportunity">
-              Speculative High-Growth / Thematic
-            </option>
-          </select>
+          />
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span className="text-[11px] text-slate-400">Suggestions:</span>
+            {[
+              'Capital Appreciation & Moderate Growth',
+              'Wealth Preservation & Safety',
+              'High Dividend Yield & Cash Flow',
+              'Balanced Growth & Income',
+            ].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  setFormData({ ...formData, investment_goal: s });
+                  if (errors.investment_goal) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.investment_goal;
+                      return next;
+                    });
+                  }
+                }}
+                className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
           {errors.investment_goal && (
             <p className="text-xs text-rose-600 mt-1 flex items-center">
               <AlertCircle className="w-3 h-3 mr-1" />
@@ -173,7 +192,7 @@ export const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
           )}
         </div>
 
-        {/* Capital Amount & Currency */}
+        {/* Capital Amount (Currency dropdown removed per amendment) */}
         <div>
           <label
             htmlFor="capital_amount"
@@ -181,25 +200,15 @@ export const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
           >
             Available Investment Capital
           </label>
-          <div className="flex space-x-2">
-            <select
-              aria-label="Currency Selector"
-              value={formData.currency || 'USD'}
-              onChange={(e) =>
-                setFormData({ ...formData, currency: e.target.value })
-              }
-              className="w-24 px-2 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="USD">USD ($)</option>
-              <option value="INR">INR (₹)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
-            </select>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm font-semibold pointer-events-none">
+              $
+            </span>
             <input
               id="capital_amount"
               type="number"
               min="1"
-              step="100"
+              step="1000"
               value={formData.capital_amount ?? ''}
               onChange={(e) =>
                 setFormData({
@@ -207,8 +216,8 @@ export const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
                   capital_amount: e.target.value ? Number(e.target.value) : undefined,
                 })
               }
-              placeholder="e.g. 50000"
-              className={`flex-1 px-3 py-2 text-sm bg-white border rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+              placeholder="50000"
+              className={`w-full pl-7 pr-3 py-2 text-sm bg-white border rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                 errors.capital_amount ? 'border-rose-300 ring-1 ring-rose-300' : 'border-slate-300'
               }`}
             />
@@ -223,34 +232,16 @@ export const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
           {/* Quick presets */}
           <div className="flex items-center space-x-2 mt-2">
             <span className="text-[11px] text-slate-400">Presets:</span>
-            <button
-              type="button"
-              onClick={() => handlePresetCapital(10000, 'USD')}
-              className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
-            >
-              $10,000
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetCapital(50000, 'USD')}
-              className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
-            >
-              $50,000
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetCapital(100000, 'INR')}
-              className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
-            >
-              ₹1,00,000
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetCapital(500000, 'INR')}
-              className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
-            >
-              ₹5,00,000
-            </button>
+            {[10000, 25000, 50000, 100000, 250000].map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                onClick={() => handlePresetCapital(amt)}
+                className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                ${amt.toLocaleString()}
+              </button>
+            ))}
           </div>
         </div>
 
