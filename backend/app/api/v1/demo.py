@@ -1236,12 +1236,46 @@ def _parse_json_response(raw: str) -> Optional[Dict[str, Any]]:
         pass
 
     match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-    if not match:
-        return None
-    try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return None
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    # Try to repair truncated JSON (unterminated strings or open braces)
+    repaired = cleaned
+    first_brace = repaired.find("{")
+    if first_brace != -1:
+        repaired = repaired[first_brace:]
+        if repaired.count('"') % 2 != 0:
+            repaired += '"'
+        open_braces = repaired.count("{") - repaired.count("}")
+        if open_braces > 0:
+            repaired += "}" * open_braces
+        try:
+            return json.loads(repaired)
+        except Exception:
+            pass
+
+    # Fallback: extract known fields via regex if available
+    extracted: Dict[str, Any] = {}
+    for field in [
+        "ticker", "company", "investor_profile", "executive_summary",
+        "technical_outlook", "fundamental_view", "valuation_view",
+        "news_sentiment", "risk_assessment", "scenario_analysis",
+        "catalysts_to_watch", "final_verdict", "confidence",
+        "data_availability", "disclaimer",
+    ]:
+        f_match = re.search(rf'"{field}"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', cleaned)
+        if f_match:
+            try:
+                extracted[field] = f_match.group(1).encode('utf-8').decode('unicode_escape', 'ignore')
+            except Exception:
+                extracted[field] = f_match.group(1)
+    if extracted.get("executive_summary") or extracted.get("final_verdict"):
+        return extracted
+
+    return None
 
 
 async def _run_synthesis(synthesis_prompt: str) -> Dict[str, Any]:
