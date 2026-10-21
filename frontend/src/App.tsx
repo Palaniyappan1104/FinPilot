@@ -1,8 +1,11 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppContextProvider } from './context/AppContext';
+import { AuthContextProvider } from './context/AuthContext';
 import { AppLayout } from './layouts/AppLayout';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 
+import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NewAnalysisPage } from './pages/NewAnalysisPage';
 import { MultiAgentPage } from './pages/MultiAgentPage';
@@ -12,41 +15,56 @@ import { ProfilePage } from './pages/ProfilePage';
 
 export const App: React.FC = () => {
   return (
-    <AppContextProvider>
-      <BrowserRouter>
-        <AppLayout>
+    <AuthContextProvider>
+      <AppContextProvider>
+        <BrowserRouter>
           <Routes>
-            {/* Dashboard */}
-            <Route path="/" element={<DashboardPage />} />
+            {/* Public: Login / Signup */}
+            <Route path="/login" element={<LoginPage />} />
 
-            {/* Unified Research & Analysis Flow */}
-            <Route path="/analysis/new" element={<NewAnalysisPage />} />
-            <Route path="/analysis/:id/progress" element={<NewAnalysisPage />} />
-            <Route path="/analysis/progress" element={<NewAnalysisPage />} />
+            {/* Protected: All app routes */}
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Routes>
+                      {/* Dashboard */}
+                      <Route path="/" element={<DashboardPage />} />
 
-            {/* Dedicated Multi-Agent Analysis Section */}
-            <Route path="/multi-agent" element={<MultiAgentPage />} />
+                      {/* Unified Research & Analysis Flow */}
+                      <Route path="/analysis/new" element={<NewAnalysisPage />} />
+                      <Route path="/analysis/:id/progress" element={<NewAnalysisPage />} />
+                      <Route path="/analysis/progress" element={<NewAnalysisPage />} />
 
-            {/* Final Investment Report (Direct Link / History) */}
-            <Route path="/reports/:id" element={<ReportsPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
+                      {/* Dedicated Multi-Agent Analysis Section */}
+                      <Route path="/multi-agent" element={<MultiAgentPage />} />
 
-            {/* Research Document Upload & Filing Q&A */}
-            <Route path="/documents" element={<DocumentsPage />} />
+                      {/* Final Investment Report (Direct Link / History) */}
+                      <Route path="/reports/:id" element={<ReportsPage />} />
+                      <Route path="/reports" element={<ReportsPage />} />
 
-            {/* Investor Profile */}
-            <Route path="/profile" element={<ProfilePage />} />
+                      {/* Research Document Upload & Filing Q&A */}
+                      <Route path="/documents" element={<DocumentsPage />} />
 
-            {/* Legacy redirect */}
-            <Route path="/specialists" element={<Navigate to="/multi-agent" replace />} />
-            <Route path="/analysis/:id/specialists" element={<Navigate to="/multi-agent" replace />} />
+                      {/* Investor Profile */}
+                      <Route path="/profile" element={<ProfilePage />} />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+                      {/* Legacy redirect */}
+                      <Route path="/specialists" element={<Navigate to="/multi-agent" replace />} />
+                      <Route path="/analysis/:id/specialists" element={<Navigate to="/multi-agent" replace />} />
+
+                      {/* Fallback */}
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </AppLayout>
-      </BrowserRouter>
-    </AppContextProvider>
+        </BrowserRouter>
+      </AppContextProvider>
+    </AuthContextProvider>
   );
 };
 

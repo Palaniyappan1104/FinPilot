@@ -63,6 +63,34 @@ export const apiService = {
   },
 
   /**
+   * Upload research document (PDF) to the Research Vault
+   */
+  async uploadDocument(
+    file: File,
+    ticker: string,
+    documentType: string = '10-K',
+  ): Promise<{
+    document_id: string;
+    ticker: string;
+    document_type: string;
+    original_filename: string;
+    file_size_bytes: number;
+    upload_status: string;
+    uploaded_at: string;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('ticker', ticker.trim().toUpperCase());
+    formData.append('document_type', documentType);
+
+    const res = await fetch(`${API_BASE}/documents/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    return handleResponse(res);
+  },
+
+  /**
    * Health check endpoint
    */
   async getHealth(): Promise<{ status: string }> {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Sparkles,
@@ -8,8 +8,10 @@ import {
   UserCheck,
   ShieldAlert,
   X,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   onClose?: () => void;
@@ -18,6 +20,8 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ onClose, className = '' }) => {
   const { profile, activeAnalysis } = useApp();
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
 
   const navItems = [
     {
@@ -48,24 +52,51 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, className = '' }) => 
     },
   ];
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <aside
-      className={`w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 flex-shrink-0 min-h-screen ${className}`}
+      className={`w-64 flex flex-col flex-shrink-0 min-h-screen ${className}`}
+      style={{
+        background: '#ffffff',
+        borderRight: '1.5px solid #e2e8f0',
+      }}
     >
       {/* Brand Header */}
-      <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950/50">
+      <div
+        className="h-16 flex items-center justify-between px-5"
+        style={{ borderBottom: '1.5px solid #e2e8f0' }}
+      >
         <div className="flex items-center">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-black text-lg tracking-wider mr-3 shadow-sm shadow-emerald-500/20">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base text-white mr-3 flex-shrink-0"
+            style={{ background: '#1e40af' }}
+          >
             FP
           </div>
           <div>
-            <div className="text-base font-bold text-white tracking-tight flex items-center">
+            <div
+              className="text-base font-bold tracking-tight flex items-center"
+              style={{ color: '#0f172a' }}
+            >
               FinPilot
-              <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+              <span
+                className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                style={{
+                  background: '#eff6ff',
+                  color: '#1e40af',
+                  border: '1px solid #bfdbfe',
+                }}
+              >
                 v0.1
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">AI Financial Research</p>
+            <p className="text-[11px]" style={{ color: '#64748b' }}>
+              AI Financial Research
+            </p>
           </div>
         </div>
 
@@ -75,7 +106,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, className = '' }) => 
             type="button"
             onClick={onClose}
             aria-label="Close navigation"
-            className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="md:hidden p-1 rounded-lg transition-colors"
+            style={{ color: '#64748b' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f1f5f9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
             <X className="w-5 h-5" />
           </button>
@@ -84,28 +122,60 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, className = '' }) => 
 
       {/* Navigation List */}
       <nav aria-label="Main Navigation" className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        <div
+          className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider"
+          style={{ color: '#94a3b8' }}
+        >
           Platform
         </div>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.to === '/'}
             onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-slate-800 text-white shadow-sm border border-slate-700/60 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-              }`
+            className="flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150"
+            style={({ isActive }) =>
+              isActive
+                ? {
+                    background: '#eff6ff',
+                    color: '#1e40af',
+                    border: '1px solid #bfdbfe',
+                    fontWeight: 600,
+                  }
+                : {
+                    color: '#475569',
+                    border: '1px solid transparent',
+                  }
             }
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              if (!el.getAttribute('aria-current')) {
+                el.style.background = '#f8fafc';
+                el.style.color = '#1e3a8a';
+              }
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              if (!el.getAttribute('aria-current')) {
+                el.style.background = 'transparent';
+                el.style.color = '#475569';
+              }
+            }}
           >
             <div className="flex items-center">
               {item.icon}
               <span>{item.label}</span>
             </div>
             {item.badge && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-sky-950 text-sky-400 border border-sky-800 animate-pulse">
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse"
+                style={{
+                  background: '#eff6ff',
+                  color: '#1e40af',
+                  border: '1px solid #bfdbfe',
+                }}
+              >
                 {item.badge}
               </span>
             )}
@@ -114,24 +184,75 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, className = '' }) => 
       </nav>
 
       {/* Active Profile Snippet */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/40 m-3 rounded-xl">
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1.5">
+      <div
+        className="mx-3 mb-3 p-3 rounded-xl"
+        style={{
+          background: '#f8fafc',
+          border: '1.5px solid #e2e8f0',
+        }}
+      >
+        <div
+          className="flex items-center justify-between text-[11px] font-semibold mb-1.5"
+          style={{ color: '#64748b' }}
+        >
           <span>INVESTOR CONSTRAINTS</span>
-          <span className="capitalize text-emerald-400 text-[10px]">
+          <span
+            className="capitalize text-[10px] font-bold"
+            style={{ color: '#1e40af' }}
+          >
             {profile.risk_tolerance || 'Moderate'}
           </span>
         </div>
-        <div className="text-xs text-slate-300 font-medium truncate">
+        <div className="text-xs font-medium truncate" style={{ color: '#1e293b' }}>
           {profile.time_horizon || '3-5 years'}
         </div>
-        <div className="text-[11px] text-slate-400 mt-0.5">
+        <div className="text-[11px] mt-0.5" style={{ color: '#64748b' }}>
           Capital: ${Number(profile.capital_amount || 50000).toLocaleString()}
         </div>
       </div>
 
+      {/* Sign Out */}
+      {user && (
+        <div
+          className="px-3 pb-3"
+          style={{ borderTop: '1px solid #e2e8f0' }}
+        >
+          <div className="pt-3 px-1 mb-2">
+            <p
+              className="text-[11px] font-medium truncate"
+              style={{ color: '#64748b' }}
+            >
+              {user.email}
+            </p>
+          </div>
+          <button
+            type="button"
+            id="sidebar-sign-out-btn"
+            onClick={handleSignOut}
+            className="w-full flex items-center px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+            style={{ color: '#dc2626' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#fef2f2';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
+          >
+            <LogOut className="w-4 h-4 mr-2 flex-shrink-0" />
+            Sign Out
+          </button>
+        </div>
+      )}
+
       {/* Regulatory Badge */}
-      <div className="px-4 py-3 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center bg-slate-950/20">
-        <ShieldAlert className="w-3.5 h-3.5 text-amber-500 mr-2 flex-shrink-0" />
+      <div
+        className="px-4 py-3 text-[10px] flex items-center"
+        style={{
+          borderTop: '1px solid #e2e8f0',
+          color: '#94a3b8',
+        }}
+      >
+        <ShieldAlert className="w-3.5 h-3.5 mr-2 flex-shrink-0" style={{ color: '#f59e0b' }} />
         <span>Decision support only. Non-advisory.</span>
       </div>
     </aside>

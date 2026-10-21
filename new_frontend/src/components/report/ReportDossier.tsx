@@ -7,12 +7,8 @@ import {
   ShieldAlert,
   Award,
   Download,
-  CheckCircle2,
-  AlertTriangle,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
-  Printer,
 } from 'lucide-react';
 import { AnalyzeResponse } from '../../types';
 
@@ -63,41 +59,41 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
   const conf = report.confidence || 'Medium';
   const confBadgeColor =
     conf.toLowerCase() === 'high'
-      ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
       : conf.toLowerCase() === 'low'
-        ? 'bg-rose-950 text-rose-400 border-rose-800'
-        : 'bg-amber-950 text-amber-400 border-amber-800';
+        ? 'bg-rose-50 text-rose-700 border-rose-200'
+        : 'bg-amber-50 text-amber-700 border-amber-200';
 
   return (
     <div className="space-y-6">
       {/* Dossier Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl shadow-slate-950/40">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center space-x-3">
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {report.company}
             </h2>
-            <span className="px-2.5 py-1 rounded-md bg-slate-800 text-emerald-400 font-mono text-sm font-bold border border-slate-700">
+            <span className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-mono text-sm font-bold border border-blue-200">
               {report.ticker}
             </span>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             Institutional Research Dossier synthesized by FinPilot Multi-Agent Architecture
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className={`px-3 py-1.5 rounded-lg border font-semibold text-xs flex items-center space-x-1.5 ${confBadgeColor}`}>
+          <div className={`px-3 py-1.5 rounded-lg border font-bold text-xs flex items-center space-x-1.5 ${confBadgeColor}`}>
             <span>Confidence:</span>
-            <span className="font-bold">{conf}</span>
+            <span>{conf}</span>
           </div>
 
           <button
             type="button"
             onClick={handleDownloadMarkdown}
-            className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition-colors"
+            className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold transition-colors"
           >
-            <Download className="w-3.5 h-3.5 mr-1 text-slate-400" />
+            <Download className="w-3.5 h-3.5 mr-1 text-slate-500" />
             <span>Export .md</span>
           </button>
 
@@ -105,7 +101,7 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
             <button
               type="button"
               onClick={onReset}
-              className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm"
+              className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors shadow-xs"
             >
               <span>+ New Analysis</span>
             </button>
@@ -114,15 +110,15 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
       </div>
 
       {/* Agent Pipeline Summary Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
             🤖 Multi-Agent Execution Telemetry
           </h3>
-          <span className="text-[11px] text-slate-500">5 Specialists + Chief Strategist</span>
+          <span className="text-[11px] text-slate-400">5 Specialists + Chief Strategist</span>
         </div>
 
-        <div className="divide-y divide-slate-800/50">
+        <div className="divide-y divide-slate-100">
           {(report.agent_statuses || []).map((ag, idx) => {
             const icon = AGENT_ICONS[ag.name] || '🔄';
             const isCompleted = ag.status === 'completed';
@@ -132,24 +128,24 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
               <div key={idx} className="py-2.5 flex items-center justify-between text-xs gap-3">
                 <div className="flex items-center space-x-2.5 min-w-[200px]">
                   <span className="text-base">{icon}</span>
-                  <span className="font-semibold text-slate-200">{ag.name}</span>
+                  <span className="font-bold text-slate-800">{ag.name}</span>
                 </div>
 
-                <div className="flex-1 text-slate-400 text-xs truncate">
+                <div className="flex-1 text-slate-600 text-xs truncate">
                   {ag.summary}
                 </div>
 
                 <div>
                   {isCompleted ? (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
                       ✓ Done
                     </span>
                   ) : isPartial ? (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-400 border border-amber-800/80 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
                       ◐ Partial
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-400 border border-rose-800/80 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
                       ✕ Failed
                     </span>
                   )}
@@ -161,7 +157,7 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
       </div>
 
       {/* Tabs Navigation */}
-      <div className="border-b border-slate-800 flex items-center space-x-1 overflow-x-auto no-scrollbar">
+      <div className="border-b border-slate-200 flex items-center space-x-1 overflow-x-auto no-scrollbar">
         {tabs.map((tab, idx) => (
           <button
             key={idx}
@@ -169,8 +165,8 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
             onClick={() => setActiveTab(idx)}
             className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors flex items-center whitespace-nowrap ${
               activeTab === idx
-                ? 'bg-slate-900 text-emerald-400 border-t-2 border-emerald-500 border-x border-slate-800'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                ? 'bg-white text-blue-700 border-t-2 border-blue-600 border-x border-slate-200 font-bold shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             {tab.label}
@@ -179,43 +175,43 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
       </div>
 
       {/* Tab Content Panels */}
-      <div className="bg-slate-900 border border-slate-800 rounded-b-xl rounded-tr-xl p-6 space-y-6">
+      <div className="bg-white border border-slate-200 rounded-b-xl rounded-tr-xl p-6 shadow-xs space-y-6">
         {/* Tab 0: Summary */}
         {activeTab === 0 && (
           <div className="space-y-6">
             {report.investor_profile && (
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">
                   Investor Mandate
                 </span>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-700 leading-relaxed">
                   {report.investor_profile}
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Executive Summary
               </span>
-              <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800 text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed whitespace-pre-line">
                 {report.executive_summary}
               </div>
             </div>
 
             {report.key_metrics && Object.keys(report.key_metrics).length > 0 && (
               <div className="space-y-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Verified Key Metrics (yfinance)
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {Object.entries(report.key_metrics).map(([key, val]) => (
                     <div
                       key={key}
-                      className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 flex flex-col justify-between"
+                      className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between"
                     >
-                      <span className="text-[11px] text-slate-400">{key}</span>
-                      <span className="text-sm font-bold text-slate-100 mt-1 font-mono">
+                      <span className="text-[11px] text-slate-500">{key}</span>
+                      <span className="text-sm font-bold text-slate-900 mt-1 font-mono">
                         {val}
                       </span>
                     </div>
@@ -225,8 +221,8 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
             )}
 
             {report.data_availability && (
-              <div className="text-[11px] text-slate-400 bg-slate-950/40 p-3 rounded-lg border border-slate-800/80">
-                <span className="font-semibold text-slate-300">Data Availability: </span>
+              <div className="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <span className="font-semibold text-slate-700">Data Availability: </span>
                 {report.data_availability}
               </div>
             )}
@@ -236,13 +232,13 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
         {/* Tab 1: Technical */}
         {activeTab === 1 && (
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 text-emerald-400">
+            <div className="flex items-center space-x-2 text-emerald-600">
               <TrendingUp className="w-5 h-5" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
                 Technical Analysis & Momentum Outlook
               </h3>
             </div>
-            <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+            <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed whitespace-pre-line">
               {report.technical_outlook || 'No technical analysis available.'}
             </div>
           </div>
@@ -252,23 +248,23 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
         {activeTab === 2 && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 text-sky-400">
+              <div className="flex items-center space-x-2 text-blue-600">
                 <FileSpreadsheet className="w-5 h-5" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
                   Fundamental View & Financial Health
                 </h3>
               </div>
-              <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+              <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed whitespace-pre-line">
                 {report.fundamental_view || 'No fundamental analysis available.'}
               </div>
             </div>
 
             {report.valuation_view && (
-              <div className="space-y-2 pt-4 border-t border-slate-800">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="space-y-2 pt-4 border-t border-slate-100">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Valuation Multiples & DCF Context
                 </h4>
-                <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed whitespace-pre-line">
                   {report.valuation_view}
                 </div>
               </div>
@@ -280,23 +276,23 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
         {activeTab === 3 && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 text-amber-400">
+              <div className="flex items-center space-x-2 text-amber-600">
                 <Newspaper className="w-5 h-5" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
                   News Sentiment & Market Narrative
                 </h3>
               </div>
-              <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+              <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed whitespace-pre-line">
                 {report.news_sentiment || 'No news sentiment available.'}
               </div>
             </div>
 
             {report.sources && report.sources.length > 0 && (
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Data Sources Actually Referenced
                 </span>
-                <ul className="space-y-1 text-xs text-slate-300 list-disc list-inside">
+                <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside">
                   {report.sources.map((s, idx) => (
                     <li key={idx}>{s}</li>
                   ))}
@@ -309,13 +305,13 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
         {/* Tab 4: Risk */}
         {activeTab === 4 && (
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 text-rose-400">
+            <div className="flex items-center space-x-2 text-rose-600">
               <ShieldAlert className="w-5 h-5" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
                 Institutional Risk Register & Sensitivities
               </h3>
             </div>
-            <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-200 leading-relaxed whitespace-pre-line">
+            <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed whitespace-pre-line">
               {report.risk_assessment || 'No risk assessment available.'}
             </div>
           </div>
@@ -325,40 +321,40 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
         {activeTab === 5 && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 text-emerald-400">
+              <div className="flex items-center space-x-2 text-emerald-600">
                 <Award className="w-5 h-5" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
                   Final Synthesis & Verdict
                 </h3>
               </div>
-              <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-100 leading-relaxed whitespace-pre-line font-medium">
+              <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed whitespace-pre-line font-medium">
                 {report.final_verdict || 'No verdict available.'}
               </div>
             </div>
 
             {report.scenario_analysis && (
-              <div className="space-y-2 pt-2 border-t border-slate-800">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Scenario Analysis (Base / Bull / Bear)
                 </h4>
-                <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed whitespace-pre-line">
                   {report.scenario_analysis}
                 </div>
               </div>
             )}
 
             {report.catalysts_to_watch && (
-              <div className="space-y-2 pt-2 border-t border-slate-800">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Catalysts to Watch & Invalidation Triggers
                 </h4>
-                <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed whitespace-pre-line">
                   {report.catalysts_to_watch}
                 </div>
               </div>
             )}
 
-            <div className="text-[11px] text-slate-500 italic pt-2 border-t border-slate-800">
+            <div className="text-[11px] text-slate-400 italic pt-2 border-t border-slate-100">
               {report.disclaimer ||
                 'This report is for informational purposes only and does not constitute financial advice.'}
             </div>
@@ -370,27 +366,27 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-white">Structured Research Note (Markdown)</h3>
-                <p className="text-xs text-slate-400">Complete raw markdown output compiled by the Synthesis Agent</p>
+                <h3 className="text-sm font-bold text-slate-900">Structured Research Note (Markdown)</h3>
+                <p className="text-xs text-slate-500">Complete raw markdown output compiled by the Synthesis Agent</p>
               </div>
 
               <button
                 type="button"
                 onClick={handleDownloadMarkdown}
-                className="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shadow-sm"
+                className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shadow-xs"
               >
                 <Download className="w-4 h-4 mr-1.5" />
                 <span>Download Report (.md)</span>
               </button>
             </div>
 
-            <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-[500px] leading-relaxed">
+            <pre className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-[500px] leading-relaxed shadow-xs">
               {report.raw_markdown || 'No markdown output generated.'}
             </pre>
 
             {report.research_briefs && Object.keys(report.research_briefs).length > 0 && (
-              <div className="space-y-3 pt-4 border-t border-slate-800">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   🔬 Raw Specialist Analyst Briefs
                 </h4>
                 <div className="space-y-2">
@@ -399,25 +395,25 @@ export const ReportDossier: React.FC<ReportDossierProps> = ({ report, onReset })
                     return (
                       <div
                         key={name}
-                        className="rounded-xl border border-slate-800 bg-slate-950/60 overflow-hidden"
+                        className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden"
                       >
                         <button
                           type="button"
                           onClick={() => toggleBrief(name)}
-                          className="w-full px-4 py-3 text-left flex items-center justify-between text-xs font-semibold text-slate-200 hover:bg-slate-800/40 transition-colors"
+                          className="w-full px-4 py-3 text-left flex items-center justify-between text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors"
                         >
                           <span className="flex items-center space-x-2">
                             <span>{AGENT_ICONS[name] || '🔬'}</span>
                             <span>{name}</span>
                           </span>
                           {isOpen ? (
-                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                            <ChevronDown className="w-4 h-4 text-slate-500" />
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
+                            <ChevronRight className="w-4 h-4 text-slate-500" />
                           )}
                         </button>
                         {isOpen && (
-                          <div className="p-4 border-t border-slate-800 text-xs text-slate-300 leading-relaxed whitespace-pre-line bg-slate-950">
+                          <div className="p-4 border-t border-slate-200 text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-white">
                             {brief}
                           </div>
                         )}

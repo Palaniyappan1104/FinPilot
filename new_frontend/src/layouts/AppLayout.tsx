@@ -11,7 +11,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500/20 selection:text-emerald-400">
+    <div className="min-h-screen flex font-sans antialiased bg-slate-50 text-slate-900" style={{ background: '#f8fafc', color: '#0f172a' }}>
       {/* Desktop Persistent Sidebar */}
       <div className="hidden md:flex md:flex-shrink-0 print:hidden">
         <Sidebar />
@@ -21,18 +21,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex print:hidden">
           <div
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
             aria-hidden="true"
           />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-slate-900 z-50 shadow-2xl">
+          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white z-50 shadow-2xl">
             <Sidebar onClose={() => setMobileMenuOpen(false)} />
           </div>
         </div>
       )}
 
       {/* Main Column */}
-      <div className="flex-1 flex flex-col min-w-0 print:block print:w-full">
+      <div className="flex-1 flex flex-col min-w-0 print:block print:w-full bg-slate-50" style={{ background: '#f8fafc' }}>
         <div className="print:hidden">
           <Header onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
         </div>

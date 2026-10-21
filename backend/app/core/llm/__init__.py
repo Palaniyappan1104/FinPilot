@@ -12,12 +12,14 @@ from app.core.llm.exceptions import (
 )
 from app.core.llm.factory import get_llm_provider
 from app.core.llm.gemini import GeminiProvider
+from app.core.llm.groq_provider import GroqProvider
 from app.core.llm.structured import generate_structured
 
 __all__ = [
     "LLMProvider",
     "LLMResponse",
     "GeminiProvider",
+    "GroqProvider",
     "get_llm_provider",
     "generate_structured",
     "LLMError",

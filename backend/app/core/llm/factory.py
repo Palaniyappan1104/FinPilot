@@ -6,6 +6,7 @@ from app.core.config import Settings, get_settings
 from app.core.llm.base import LLMProvider
 from app.core.llm.exceptions import LLMConfigurationError
 from app.core.llm.gemini import GeminiProvider
+from app.core.llm.groq_provider import GroqProvider
 from app.core.logging import get_logger
 
 logger = get_logger("app.core.llm.factory")
@@ -15,6 +16,7 @@ def get_llm_provider(settings: Optional[Settings] = None) -> LLMProvider:
     """Instantiate and return the configured LLMProvider.
 
     Reads the provider type from settings.LLM_PROVIDER. Supported providers:
+    - 'groq' -> GroqProvider
     - 'gemini' -> GeminiProvider
 
     Args:
@@ -35,16 +37,21 @@ def get_llm_provider(settings: Optional[Settings] = None) -> LLMProvider:
             provider="unknown",
         )
 
+    if provider_name == "groq":
+        logger.info(
+            "Initializing LLM provider: Groq (model: %s)", app_settings.LLM_MODEL
+        )
+        return GroqProvider(settings=app_settings)
+
     if provider_name == "gemini":
         logger.info(
             "Initializing LLM provider: Gemini (model: %s)", app_settings.LLM_MODEL
         )
         return GeminiProvider(settings=app_settings)
 
-    # Extension point for future providers (e.g. openai, anthropic)
     logger.error("Unsupported LLM_PROVIDER configured: '%s'", provider_name)
     raise LLMConfigurationError(
         message=f"Unsupported LLM_PROVIDER '{provider_name}'. "
-        "Supported providers are: ['gemini'].",
+        "Supported providers are: ['groq', 'gemini'].",
         provider=provider_name,
     )

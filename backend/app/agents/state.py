@@ -5,7 +5,8 @@ nodes. Nodes read fields they need and return dictionary updates containing
 only the fields they own.
 """
 
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
+from typing_extensions import TypedDict  # Required on Python < 3.12 with Pydantic v2
 
 
 class InvestorProfile(TypedDict, total=False):

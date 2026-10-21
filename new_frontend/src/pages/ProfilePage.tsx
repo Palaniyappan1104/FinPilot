@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserCheck, ShieldCheck, Check, RotateCcw } from 'lucide-react';
+import { UserCheck, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const ProfilePage: React.FC = () => {
@@ -27,34 +27,34 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-blue-950 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm text-white">
         <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-emerald-400">
+          <div className="flex items-center space-x-2 text-blue-300">
             <UserCheck className="w-5 h-5" />
             <span className="text-xs font-bold uppercase tracking-wider">Investor Mandate</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             Investor Profile & Risk Calibration
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-200">
             Configure portfolio constraints and risk appetite used by the Conversation Agent and Chief Strategist.
           </p>
         </div>
       </div>
 
       {savedBanner && (
-        <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-800 text-xs text-emerald-300 flex items-center space-x-2 animate-fadeIn">
-          <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+        <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-xs text-green-700 flex items-center space-x-2 shadow-xs animate-fadeIn">
+          <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
           <span>Investor constraints saved successfully and applied to upcoming analyses!</span>
         </div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleSave} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-lg">
+      <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xs">
         {/* Risk Tolerance */}
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
             Risk Tolerance Appetite
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -69,12 +69,12 @@ export const ProfilePage: React.FC = () => {
                 onClick={() => setRiskTolerance(opt.id)}
                 className={`p-4 rounded-xl border text-left transition-all ${
                   riskTolerance === opt.id
-                    ? 'bg-emerald-950/60 border-emerald-500 text-white shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                    ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
                 }`}
               >
                 <div className="text-xs font-bold capitalize">{opt.label}</div>
-                <div className="text-[11px] text-slate-400 mt-1">{opt.desc}</div>
+                <div className="text-[11px] text-slate-500 mt-1">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -82,13 +82,13 @@ export const ProfilePage: React.FC = () => {
 
         {/* Investment Horizon */}
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
             Investment Time Horizon
           </label>
           <select
             value={timeHorizon}
             onChange={(e) => setTimeHorizon(e.target.value)}
-            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
           >
             <option value="Under 6 months">Under 6 months (Short-term tactical)</option>
             <option value="1-2 years">1-2 years (Medium-term cyclical)</option>
@@ -99,7 +99,7 @@ export const ProfilePage: React.FC = () => {
 
         {/* Capital Amount */}
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
             Capital Allocation Pool ($ USD)
           </label>
           <input
@@ -108,13 +108,13 @@ export const ProfilePage: React.FC = () => {
             step="1000"
             value={capitalAmount}
             onChange={(e) => setCapitalAmount(Number(e.target.value))}
-            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
           />
         </div>
 
         {/* Primary Goal */}
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
             Primary Investment Objective
           </label>
           <input
@@ -122,18 +122,18 @@ export const ProfilePage: React.FC = () => {
             value={investmentGoal}
             onChange={(e) => setInvestmentGoal(e.target.value)}
             placeholder="e.g. Compound capital, dividend income, tech growth"
-            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
           />
         </div>
 
-        <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-          <span className="text-[11px] text-slate-500">
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+          <span className="text-[11px] text-slate-400">
             Stored locally in browser session
           </span>
 
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-sm"
+            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors shadow-xs"
           >
             Save Profile Constraints
           </button>
